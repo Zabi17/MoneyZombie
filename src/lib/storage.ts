@@ -1,8 +1,8 @@
 const KEYS = {
-  TRANSACTIONS: "xpns_transactions",
-  CATEGORIES: "xpns_categories",
-  BUDGETS: "xpns_budgets",
-  SETTINGS: "xpns_settings",
+  TRANSACTIONS: "MoneyZombie_transactions",
+  CATEGORIES: "MoneyZombie_categories",
+  BUDGETS: "MoneyZombie_budgets",
+  SETTINGS: "MoneyZombie_settings",
 };
 
 function get<T>(key: string, fallback: T): T {

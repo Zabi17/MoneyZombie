@@ -41,7 +41,7 @@ export function Welcome() {
                 color: "var(--color-text-primary)",
               }}
             >
-              Welcome to Xpns
+              Welcome to MoneyZombie
             </h1>
             <p
               className="text-sm mt-1"

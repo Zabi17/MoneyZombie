@@ -11,7 +11,7 @@ export function AppStats() {
     .filter((t) => t.type === "expense")
     .reduce((s, t) => s + t.amount, 0);
 
-  const storageKey = "xpns-store";
+  const storageKey = "MoneyZombie-store";
   const rawData = localStorage.getItem(storageKey) ?? "";
   const sizeKB = (new Blob([rawData]).size / 1024).toFixed(1);
 

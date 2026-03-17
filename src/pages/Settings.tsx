@@ -91,7 +91,7 @@ export default function Settings() {
         className="text-center text-xs pb-4"
         style={{ color: "var(--color-text-muted)" }}
       >
-        Xpns · All data stored locally on your device
+        MoneyZombie · All data stored locally on your device
       </p>
     </div>
   );

@@ -95,7 +95,7 @@ export const useAppStore = create<AppStore>()(
         set((state) => ({ settings: { ...state.settings, ...s } })),
     }),
     {
-      name: "xpns-store", // single localStorage key via zustand/persist
+      name: "MoneyZombie-store", // single localStorage key via zustand/persist
     },
   ),
 );

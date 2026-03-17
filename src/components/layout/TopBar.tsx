@@ -12,7 +12,7 @@ const TITLES: Record<string, string> = {
 
 export function TopBar() {
   const { pathname } = useLocation();
-  const title = TITLES[pathname] ?? "Xpns";
+  const title = TITLES[pathname] ?? "MoneyZombie";
 
   return (
     <header

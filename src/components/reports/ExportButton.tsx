@@ -40,7 +40,7 @@ export function ExportButton() {
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
     link.href = url;
-    link.download = `xpns-export-${format(new Date(), "yyyy-MM-dd")}.csv`;
+    link.download = `MoneyZombie-export-${format(new Date(), "yyyy-MM-dd")}.csv`;
     link.click();
     URL.revokeObjectURL(url);
   };

@@ -52,7 +52,7 @@ export function Sidebar() {
               color: "var(--color-text-primary)",
             }}
           >
-            Xpns
+            MoneyZombie
           </span>
         </div>
       </div>

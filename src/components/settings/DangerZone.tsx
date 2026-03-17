@@ -26,7 +26,7 @@ export function DangerZone() {
       categories: DEFAULT_CATEGORIES,
       settings: DEFAULT_SETTINGS,
     });
-    localStorage.removeItem("xpns-store");
+    localStorage.removeItem("MoneyZombie-store");
     window.location.reload();
   };
 
