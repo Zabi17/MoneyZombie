@@ -79,13 +79,14 @@ export function Sidebar() {
               balance >= 0 ? "var(--color-income)" : "var(--color-expense)",
           }}
         >
+          {balance >= 0 ? "" : "-"}
           {fmt(Math.abs(balance))}
         </p>
         <p
           className="text-xs mt-0.5"
           style={{ color: "var(--color-text-muted)" }}
         >
-          {balance >= 0 ? "↑ net positive" : "↓ net negative"}
+          {balance >= 0 ? "↑ net positive" : "↓ overspent"}
         </p>
       </div>
 

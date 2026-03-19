@@ -3,6 +3,7 @@ import * as Icons from "lucide-react";
 const ICON_OPTIONS = [
   "UtensilsCrossed",
   "Car",
+  "BadgeDollarSign", 
   "ShoppingBag",
   "Tv",
   "HeartPulse",

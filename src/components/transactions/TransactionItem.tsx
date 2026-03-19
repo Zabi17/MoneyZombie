@@ -21,7 +21,7 @@ export function TransactionItem({ tx, onEdit, onDelete }: Props) {
 
   return (
     <div
-      className="flex items-center gap-3 px-4 py-3 rounded-2xl group transition-all duration-150"
+      className="flex items-center gap-3 px-4 py-3 rounded-2xl group"
       style={{
         background: "var(--color-surface)",
         border: "1px solid var(--color-border)",
@@ -69,8 +69,8 @@ export function TransactionItem({ tx, onEdit, onDelete }: Props) {
         {fmt(tx.amount)}
       </span>
 
-      {/* Actions — visible on hover */}
-      <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity duration-150 shrink-0">
+      {/* Actions — always visible on mobile, hover on desktop */}
+      <div className="flex gap-1 shrink-0 lg:opacity-0 lg:group-hover:opacity-100 lg:transition-opacity lg:duration-150">
         <button
           onClick={() => onEdit(tx)}
           className="w-7 h-7 rounded-lg flex items-center justify-center transition-colors hover:opacity-70"

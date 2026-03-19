@@ -8,12 +8,6 @@ import * as Icons from "lucide-react";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "../ui/sheet";
 import { Button } from "../ui/button";
 
-type Props = {
-  open: boolean;
-  onClose: () => void;
-  editing?: Transaction | null;
-};
-
 const EMPTY = {
   title: "",
   amount: "",
@@ -23,7 +17,19 @@ const EMPTY = {
   note: "",
 };
 
-export function TransactionForm({ open, onClose, editing }: Props) {
+type Props = {
+  open: boolean;
+  onClose: () => void;
+  editing?: Transaction | null;
+  initialType?: TransactionType; // add this
+};
+
+export function TransactionForm({
+  open,
+  onClose,
+  editing,
+  initialType,
+}: Props) {
   const categories = useAppStore((s) => s.categories);
   const addTransaction = useAppStore((s) => s.addTransaction);
   const updateTransaction = useAppStore((s) => s.updateTransaction);
@@ -43,10 +49,10 @@ export function TransactionForm({ open, onClose, editing }: Props) {
         note: editing.note ?? "",
       });
     } else {
-      setForm(EMPTY);
+      setForm({ ...EMPTY, type: initialType ?? "expense" }); // use initialType here
     }
     setError("");
-  }, [editing, open]);
+  }, [editing, open, initialType]);
 
   const filtered = categories.filter((c) => c.type === form.type);
 

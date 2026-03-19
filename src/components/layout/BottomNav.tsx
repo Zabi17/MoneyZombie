@@ -3,6 +3,7 @@ import {
   LayoutDashboard,
   ArrowLeftRight,
   PiggyBank,
+  Tag,
   BarChart3,
   Settings,
 } from "lucide-react";
@@ -11,6 +12,7 @@ const NAV = [
   { to: "/", icon: LayoutDashboard, label: "Home" },
   { to: "/transactions", icon: ArrowLeftRight, label: "Txns" },
   { to: "/budgets", icon: PiggyBank, label: "Budgets" },
+  { to: "/categories", icon: Tag, label: "Categories" },
   { to: "/reports", icon: BarChart3, label: "Reports" },
   { to: "/settings", icon: Settings, label: "Settings" },
 ];
@@ -40,7 +42,9 @@ export function BottomNav() {
           {({ isActive }) => (
             <>
               <Icon size={20} strokeWidth={isActive ? 2.5 : 1.8} />
-              <span className="text-[10px] font-medium mt-0.5">{label}</span>
+              <span className="text-[9px] font-medium mt-0.5 leading-none">
+                {label}
+              </span>
             </>
           )}
         </NavLink>

@@ -1,15 +1,16 @@
 import { useState } from "react";
 import { format } from "date-fns";
-import { TrendingDown, TrendingUp, Wallet, PlusCircle } from "lucide-react";
+import { TrendingDown, TrendingUp, Wallet, Plus, Minus } from "lucide-react";
 import { StatCard } from "../components/ui/StatCard";
 import { SpendingPieChart } from "../components/dashboard/SpendingPieChart";
 import { CategoryBreakdown } from "../components/dashboard/CategoryBreakdown";
 import { RecentTransactions } from "../components/dashboard/RecentTransactions";
 import { MonthSelector } from "../components/dashboard/MonthSelector";
+import { TransactionForm } from "../components/transactions/TransactionForm";
 import { useTransactions } from "../hooks/useTransactions";
 import { useCurrency } from "../hooks/useCurrency";
 import { useAppStore } from "../store/useAppStore";
-import { Link } from "react-router-dom";
+import { TransactionType } from "../types";
 
 export default function Dashboard() {
   const [activeDate, setActiveDate] = useState(new Date());
@@ -17,6 +18,14 @@ export default function Dashboard() {
   const { totalExpense, totalIncome, balance } = useTransactions(currentMonth);
   const { format: fmt } = useCurrency();
   const name = useAppStore((s) => s.settings.name);
+
+  const [formOpen, setFormOpen] = useState(false);
+  const [formType, setFormType] = useState<TransactionType>("expense");
+
+  const openForm = (type: TransactionType) => {
+    setFormType(type);
+    setFormOpen(true);
+  };
 
   const greeting = () => {
     const h = new Date().getHours();
@@ -44,14 +53,30 @@ export default function Dashboard() {
             Overview
           </h1>
         </div>
-        <Link
-          to="/transactions"
-          className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold transition-opacity hover:opacity-80"
-          style={{ background: "var(--color-accent)", color: "black" }}
-        >
-          <PlusCircle size={16} />
-          Add
-        </Link>
+
+        {/* Two buttons */}
+        <div className="flex gap-2">
+          <button
+            onClick={() => openForm("expense")}
+            className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-bold transition-opacity hover:opacity-80"
+            style={{
+              background: "var(--color-expense)20",
+              color: "var(--color-expense)",
+              border: "1px solid var(--color-expense)40",
+            }}
+          >
+            <Minus size={15} />
+            <span className="hidden sm:inline">Sub</span>
+          </button>
+          <button
+            onClick={() => openForm("income")}
+            className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-bold transition-opacity hover:opacity-80"
+            style={{ background: "var(--color-accent)", color: "black" }}
+          >
+            <Plus size={15} />
+            <span className="hidden sm:inline">Add</span>
+          </button>
+        </div>
       </div>
 
       {/* Month selector */}
@@ -61,8 +86,8 @@ export default function Dashboard() {
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
         <StatCard
           label="Balance"
-          value={fmt(Math.abs(balance))}
-          sub={balance >= 0 ? "Positive balance" : "Overspent"}
+          value={`${balance < 0 ? "-" : ""}${fmt(Math.abs(balance))}`}
+          sub={balance >= 0 ? "Positive balance" : "Overspent this month"}
           accent={balance >= 0 ? "var(--color-income)" : "var(--color-expense)"}
           icon={<Wallet size={18} />}
         />
@@ -84,7 +109,6 @@ export default function Dashboard() {
 
       {/* Charts row */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        {/* Pie chart */}
         <div
           className="rounded-2xl p-5"
           style={{
@@ -104,7 +128,6 @@ export default function Dashboard() {
           <SpendingPieChart />
         </div>
 
-        {/* Category breakdown */}
         <div
           className="rounded-2xl p-5"
           style={{
@@ -144,6 +167,14 @@ export default function Dashboard() {
         </h2>
         <RecentTransactions />
       </div>
+
+      {/* Inline form — no navigation needed */}
+      <TransactionForm
+        open={formOpen}
+        onClose={() => setFormOpen(false)}
+        editing={null}
+        initialType={formType}
+      />
     </div>
   );
 }

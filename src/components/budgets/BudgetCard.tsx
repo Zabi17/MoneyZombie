@@ -37,7 +37,7 @@ export function BudgetCard({
 
   return (
     <div
-      className="rounded-2xl p-5 group transition-all duration-200"
+      className="rounded-2xl p-5 group transition-all duration-200 group"
       style={{
         background: "var(--color-surface)",
         border: `1px solid ${isOver ? "var(--color-expense)" : "var(--color-border)"}`,
@@ -71,7 +71,7 @@ export function BudgetCard({
         </div>
 
         {/* Actions */}
-        <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+        <div className="flex gap-1 shrink-0 lg:opacity-0 lg:group-hover:opacity-100 lg:transition-opacity">
           <button
             onClick={onEdit}
             className="w-7 h-7 rounded-lg flex items-center justify-center"
