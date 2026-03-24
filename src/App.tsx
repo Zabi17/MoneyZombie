@@ -8,11 +8,11 @@ import Budgets from "./pages/Budgets";
 import Categories from "./pages/Categories";
 import Reports from "./pages/Reports";
 import Settings from "./pages/Settings";
+import NotFound from "./pages/NotFound";
 
 export default function App() {
   const name = useAppStore((s) => s.settings.name);
 
-  // Show onboarding if name hasn't been set yet
   if (!name) return <Welcome />;
 
   return (
@@ -26,6 +26,8 @@ export default function App() {
           <Route path="reports" element={<Reports />} />
           <Route path="settings" element={<Settings />} />
         </Route>
+        {/* Catch-all — outside AppLayout so it's full screen */}
+        <Route path="*" element={<NotFound />} />
       </Routes>
     </BrowserRouter>
   );

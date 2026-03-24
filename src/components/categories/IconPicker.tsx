@@ -2,6 +2,10 @@ import * as Icons from "lucide-react";
 
 const ICON_OPTIONS = [
   "UtensilsCrossed",
+  "Wrench",
+  "User",
+  "UserStar",
+  "ShieldQuestionMark",
   "Car",
   "BadgeDollarSign", 
   "ShoppingBag",

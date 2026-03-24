@@ -62,10 +62,10 @@ export default function Dashboard() {
             style={{
               background: "var(--color-expense)20",
               color: "var(--color-expense)",
-              border: "1px solid var(--color-expense)40",
+              border: "1px solid firebrick",
             }}
           >
-            <Minus size={15} />
+            <Minus size={15}/>
             <span className="hidden sm:inline">Sub</span>
           </button>
           <button
