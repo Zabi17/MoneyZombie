@@ -17,6 +17,7 @@
   --color-accent-dim: oklch(0.65 0.15 145);
 
   --color-income:     oklch(0.72 0.17 145);
+  --color-dash:      oklch(0.7 0.1751 229.59);
   --color-expense:    oklch(0.65 0.22 25);
   --color-warning:    oklch(0.80 0.18 75);
 

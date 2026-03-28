@@ -88,7 +88,7 @@ export default function Dashboard() {
           label="Balance"
           value={`${balance < 0 ? "-" : ""}${fmt(Math.abs(balance))}`}
           sub={balance >= 0 ? "Positive balance" : "Overspent this month"}
-          accent={balance >= 0 ? "var(--color-income)" : "var(--color-expense)"}
+          accent={balance >= 0 ? "var(--color-dash)" : "var(--color-expense)"}
           icon={<Wallet size={18} />}
         />
         <StatCard
