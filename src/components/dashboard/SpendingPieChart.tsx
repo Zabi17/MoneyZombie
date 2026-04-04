@@ -8,9 +8,8 @@ import {
 } from "recharts";
 import { useState } from "react";
 import { useAppStore } from "../../store/useAppStore";
-import { useTransactions } from "../../hooks/useTransactions";
+import { useTransactionsMulti } from "../../hooks/useTransactions";
 import { useCurrency } from "../../hooks/useCurrency";
-import { format } from "date-fns";
 
 const RADIAN = Math.PI / 180;
 
@@ -46,18 +45,32 @@ function CustomTooltip({ active, payload }: any) {
   if (!active || !payload?.length) return null;
   const d = payload[0];
   return (
-    <div className="px-3 py-2 rounded-xl text-sm shadow-xl bg-surface-2 border border-border">
-      <p className="font-semibold text-text-primary">{d.name}</p>
+    <div
+      className="px-3 py-2 rounded-xl text-sm shadow-xl"
+      style={{
+        background: "var(--color-surface-2)",
+        border: "1px solid var(--color-border)",
+      }}
+    >
+      <p
+        className="font-semibold"
+        style={{ color: "var(--color-text-primary)" }}
+      >
+        {d.name}
+      </p>
       <p style={{ color: d.payload.color }}>{fmt(d.value)}</p>
-      <p className="text-xs mt-1 text-text-muted">Click to hide</p>
+      <p className="text-xs mt-1" style={{ color: "var(--color-text-muted)" }}>
+        Click to hide
+      </p>
     </div>
   );
 }
 
-export function SpendingPieChart() {
+type Props = { months?: string[] };
+
+export function SpendingPieChart({ months }: Props) {
   const categories = useAppStore((s) => s.categories);
-  const currentMonth = format(new Date(), "yyyy-MM");
-  const { expenses } = useTransactions(currentMonth);
+  const { expenses } = useTransactionsMulti(months);
   const { format: fmt } = useCurrency();
   const [hiddenCategories, setHiddenCategories] = useState<Set<string>>(
     new Set(),
@@ -93,9 +106,11 @@ export function SpendingPieChart() {
 
   if (allData.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center h-48 gap-2 text-(--color-tex
-      t-muted)">
-        <p className="text-sm">No expenses this month</p>
+      <div
+        className="flex flex-col items-center justify-center h-48 gap-2"
+        style={{ color: "var(--color-text-muted)" }}
+      >
+        <p className="text-sm">No expenses for this period</p>
         <p className="text-xs">Add your first transaction</p>
       </div>
     );
@@ -116,7 +131,7 @@ export function SpendingPieChart() {
               dataKey="value"
               labelLine={false}
               label={CustomLabel}
-              onClick={(entry) => toggleCategory(entry.name)}
+              onClick={(entry) => entry.name && toggleCategory(entry.name)}
               className="cursor-pointer select-none"
             >
               {data.map((entry, i) => (
@@ -137,7 +152,7 @@ export function SpendingPieChart() {
                         style={{ opacity: isHidden ? 0.4 : 1 }}
                       >
                         <span
-                          className="inline-block rounded-full size-2 transition-colors duration-200"
+                          className="inline-block rounded-full size-2"
                           style={{
                             background: isHidden
                               ? "var(--color-text-muted)"
@@ -145,7 +160,7 @@ export function SpendingPieChart() {
                           }}
                         />
                         <span
-                          className="text-xs transition-all duration-200"
+                          className="text-xs"
                           style={{
                             color: isHidden
                               ? "var(--color-text-muted)"
@@ -169,7 +184,12 @@ export function SpendingPieChart() {
         <div className="flex justify-center">
           <button
             onClick={() => setHiddenCategories(new Set())}
-            className="text-xs px-3 py-1 rounded-full transition-all cursor-pointer text-text-muted border border-(--color-border) bg-(--color-surface-2)"
+            className="text-xs px-3 py-1 rounded-full transition-all cursor-pointer"
+            style={{
+              color: "var(--color-text-muted)",
+              border: "1px solid var(--color-border)",
+              background: "var(--color-surface-2)",
+            }}
           >
             Reset ({hiddenCategories.size} hidden)
           </button>

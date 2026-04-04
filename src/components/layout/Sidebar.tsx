@@ -10,7 +10,7 @@ import {
 } from "lucide-react";
 import { useAppStore } from "../../store/useAppStore";
 import { useCurrency } from "../../hooks/useCurrency";
-import { useTransactions } from "../../hooks/useTransactions";
+import { useRunningBalance } from "../../hooks/useTransactions";
 import { format } from "date-fns";
 
 const NAV = [
@@ -26,7 +26,7 @@ export function Sidebar() {
   const name = useAppStore((s) => s.settings.name);
   const { format: fmt } = useCurrency();
   const currentMonth = format(new Date(), "yyyy-MM");
-  const { balance } = useTransactions(currentMonth);
+  const balance = useRunningBalance(currentMonth);
 
   return (
     <aside

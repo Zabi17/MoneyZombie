@@ -1,12 +1,14 @@
-import { useAppStore } from "../../store/useAppStore";
 import { useCurrency } from "../../hooks/useCurrency";
+import { useAppStore } from "../../store/useAppStore";
 import { format } from "date-fns";
 import * as Icons from "lucide-react";
 import { Link } from "react-router-dom";
 import { ArrowRight } from "lucide-react";
+import { Transaction } from "../../types";
 
-export function RecentTransactions() {
-  const transactions = useAppStore((s) => s.transactions);
+type Props = { transactions: Transaction[] };
+
+export function RecentTransactions({ transactions }: Props) {
   const categories = useAppStore((s) => s.categories);
   const { format: fmt } = useCurrency();
 

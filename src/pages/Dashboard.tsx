@@ -1,21 +1,37 @@
-import { useState } from "react";
-import { format } from "date-fns";
+import { useState, useMemo } from "react";
+import { format, subMonths } from "date-fns";
 import { TrendingDown, TrendingUp, Wallet, Plus, Minus } from "lucide-react";
 import { StatCard } from "../components/ui/StatCard";
 import { SpendingPieChart } from "../components/dashboard/SpendingPieChart";
 import { CategoryBreakdown } from "../components/dashboard/CategoryBreakdown";
 import { RecentTransactions } from "../components/dashboard/RecentTransactions";
 import { MonthSelector } from "../components/dashboard/MonthSelector";
+import { ScopeSelector } from "../components/dashboard/ScopeSelector";
 import { TransactionForm } from "../components/transactions/TransactionForm";
-import { useTransactions } from "../hooks/useTransactions";
+import {
+  useTransactionsMulti,
+  useRunningBalance,
+  getScopeMonths,
+  ViewScope,
+} from "../hooks/useTransactions";
 import { useCurrency } from "../hooks/useCurrency";
 import { useAppStore } from "../store/useAppStore";
 import { TransactionType } from "../types";
 
 export default function Dashboard() {
   const [activeDate, setActiveDate] = useState(new Date());
+  const [scope, setScope] = useState<ViewScope>("month");
   const currentMonth = format(activeDate, "yyyy-MM");
-  const { totalExpense, totalIncome, balance } = useTransactions(currentMonth);
+
+  const scopeMonths = useMemo(
+    () => getScopeMonths(currentMonth, scope),
+    [currentMonth, scope],
+  );
+
+  const { totalExpense, totalIncome, filtered } =
+    useTransactionsMulti(scopeMonths);
+  const runningBalance = useRunningBalance(currentMonth);
+
   const { format: fmt } = useCurrency();
   const name = useAppStore((s) => s.settings.name);
 
@@ -33,6 +49,16 @@ export default function Dashboard() {
     if (h < 17) return "Good afternoon";
     return "Good evening";
   };
+
+  // Scope label for stat card subtitle
+  const scopeLabel = useMemo(() => {
+    if (scope === "all") return "All time";
+    if (scope === "month+prev") {
+      const prev = format(subMonths(activeDate, 1), "MMM");
+      return `${prev} – ${format(activeDate, "MMM yyyy")}`;
+    }
+    return format(activeDate, "MMMM yyyy");
+  }, [scope, activeDate]);
 
   return (
     <div className="space-y-6 max-w-5xl mx-auto">
@@ -54,7 +80,6 @@ export default function Dashboard() {
           </h1>
         </div>
 
-        {/* Two buttons */}
         <div className="flex gap-2">
           <button
             onClick={() => openForm("expense")}
@@ -65,7 +90,7 @@ export default function Dashboard() {
               border: "1px solid firebrick",
             }}
           >
-            <Minus size={15}/>
+            <Minus size={15} />
             <span className="hidden sm:inline">Sub</span>
           </button>
           <button
@@ -79,29 +104,34 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {/* Month selector */}
-      <MonthSelector date={activeDate} onChange={setActiveDate} />
+      {/* Month selector + scope selector */}
+      <div className="flex items-center gap-2">
+        <MonthSelector date={activeDate} onChange={setActiveDate} />
+        <ScopeSelector value={scope} onChange={setScope} />
+      </div>
 
       {/* Stat cards */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
         <StatCard
-          label="Balance"
-          value={`${balance < 0 ? "-" : ""}${fmt(Math.abs(balance))}`}
-          sub={balance >= 0 ? "Positive balance" : "Overspent this month"}
-          accent={balance >= 0 ? "var(--color-dash)" : "var(--color-expense)"}
+          label="Running Balance"
+          value={`${runningBalance < 0 ? "-" : ""}${fmt(Math.abs(runningBalance))}`}
+          sub={`Carry-forward up to ${format(activeDate, "MMM yyyy")}`}
+          accent={
+            runningBalance >= 0 ? "var(--color-dash)" : "var(--color-expense)"
+          }
           icon={<Wallet size={18} />}
         />
         <StatCard
           label="Income"
           value={fmt(totalIncome)}
-          sub={format(activeDate, "MMMM yyyy")}
+          sub={scopeLabel}
           accent="var(--color-income)"
           icon={<TrendingUp size={18} />}
         />
         <StatCard
           label="Expenses"
           value={fmt(totalExpense)}
-          sub={format(activeDate, "MMMM yyyy")}
+          sub={scopeLabel}
           accent="var(--color-expense)"
           icon={<TrendingDown size={18} />}
         />
@@ -125,7 +155,7 @@ export default function Dashboard() {
           >
             Spending Split
           </h2>
-          <SpendingPieChart />
+          <SpendingPieChart months={scopeMonths} />
         </div>
 
         <div
@@ -144,7 +174,7 @@ export default function Dashboard() {
           >
             Top Categories
           </h2>
-          <CategoryBreakdown />
+          <CategoryBreakdown months={scopeMonths} />
         </div>
       </div>
 
@@ -165,10 +195,9 @@ export default function Dashboard() {
         >
           Recent Transactions
         </h2>
-        <RecentTransactions />
+        <RecentTransactions transactions={filtered} />
       </div>
 
-      {/* Inline form — no navigation needed */}
       <TransactionForm
         open={formOpen}
         onClose={() => setFormOpen(false)}
