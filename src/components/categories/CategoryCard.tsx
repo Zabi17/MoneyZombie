@@ -10,7 +10,7 @@ const DEFAULT_IDS = [
   "health",
   "utilities",
   "rent",
-  "education",
+  "personal",
   "salary",
   "freelance",
   "investment",

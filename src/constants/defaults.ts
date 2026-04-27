@@ -51,9 +51,9 @@ export const DEFAULT_CATEGORIES: Category[] = [
     type: "expense",
   },
   {
-    id: "education",
-    name: "Education",
-    icon: "GraduationCap",
+    id: "personal",
+    name: "Personal",
+    icon: "User",
     color: "#06b6d4",
     type: "expense",
   },
