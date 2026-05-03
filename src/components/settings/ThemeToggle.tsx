@@ -1,4 +1,5 @@
 import { Sun, Moon, Monitor } from "lucide-react";
+import { useAuth } from "../../hooks/useAuth";
 import { useAppStore } from "../../store/useAppStore";
 import { useEffect } from "react";
 
@@ -11,7 +12,7 @@ const OPTIONS = [
 export function ThemeToggle() {
   const theme = useAppStore((s) => s.settings.theme);
   const updateSettings = useAppStore((s) => s.updateSettings);
-
+  const { user } = useAuth();
   useEffect(() => {
     const root = document.documentElement;
     if (theme === "dark") {
@@ -35,7 +36,7 @@ export function ThemeToggle() {
       {OPTIONS.map(({ value, icon: Icon, label }) => (
         <button
           key={value}
-          onClick={() => updateSettings({ theme: value })}
+          onClick={() => updateSettings({ theme: value }, user!.id)}
           className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all duration-200"
           style={{
             background: theme === value ? "var(--color-accent)" : "transparent",

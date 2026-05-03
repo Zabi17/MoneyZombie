@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "../ui/sheet";
 import { useAppStore } from "../../store/useAppStore";
 import { useCurrency } from "../../hooks/useCurrency";
+import { useAuth } from "../../hooks/useAuth";
 import * as Icons from "lucide-react";
 
 type Props = {
@@ -16,6 +17,7 @@ export function BudgetForm({ open, onClose, month, editing }: Props) {
   const budgets = useAppStore((s) => s.budgets);
   const setBudget = useAppStore((s) => s.setBudget);
   const { symbol } = useCurrency();
+  const { user } = useAuth();
 
   const [categoryId, setCategoryId] = useState("");
   const [amount, setAmount] = useState("");
@@ -48,7 +50,7 @@ export function BudgetForm({ open, onClose, month, editing }: Props) {
     if (!amount || isNaN(Number(amount)) || Number(amount) <= 0)
       return setError("Enter a valid budget amount");
 
-    setBudget({ categoryId, amount: Number(amount), month });
+    setBudget({ categoryId, amount: Number(amount), month }, user!.id);
     onClose();
   };
 

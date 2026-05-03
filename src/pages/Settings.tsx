@@ -1,18 +1,20 @@
 import { useAppStore } from "../store/useAppStore";
+import { useAuth } from "../hooks/useAuth";
 import { SettingRow } from "../components/settings/SettingRow";
 import { SettingSection } from "../components/settings/SettingSection";
 import { ThemeToggle } from "../components/settings/ThemeToggle";
 import { CurrencySelect } from "../components/settings/CurrencySelect";
 import { DangerZone } from "../components/settings/DangerZone";
 import { AppStats } from "../components/settings/AppStats";
+import { LogOut } from "lucide-react";
 
 export default function Settings() {
   const name = useAppStore((s) => s.settings.name);
   const updateSettings = useAppStore((s) => s.updateSettings);
+  const { user, signOut } = useAuth();
 
   return (
     <div className="space-y-5 max-w-xl mx-auto">
-      {/* Header */}
       <div>
         <p
           className="text-xs font-medium uppercase tracking-widest mb-0.5"
@@ -50,9 +52,21 @@ export default function Settings() {
             }}
             value={name}
             placeholder="Your name"
-            onChange={(e) => updateSettings({ name: e.target.value })}
+            onChange={(e) =>
+              user && updateSettings({ name: e.target.value }, user.id)
+            }
           />
         </SettingRow>
+        {user?.email && (
+          <SettingRow label="Google account" description="Signed in as">
+            <span
+              className="text-xs font-medium"
+              style={{ color: "var(--color-text-muted)" }}
+            >
+              {user.email}
+            </span>
+          </SettingRow>
+        )}
       </SettingSection>
 
       {/* Appearance */}
@@ -72,7 +86,7 @@ export default function Settings() {
         </SettingRow>
       </SettingSection>
 
-      {/* App stats */}
+      {/* Data summary */}
       <SettingSection title="Data Summary">
         <div className="py-3">
           <AppStats />
@@ -86,12 +100,29 @@ export default function Settings() {
         </div>
       </SettingSection>
 
-      {/* Footer */}
+      {/* Sign out */}
+      <SettingSection title="Account">
+        <div className="py-3">
+          <button
+            onClick={signOut}
+            className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold transition-opacity hover:opacity-70"
+            style={{
+              background: "var(--color-expense)15",
+              border: "1px solid var(--color-expense)40",
+              color: "var(--color-expense)",
+            }}
+          >
+            <LogOut size={15} />
+            Sign out
+          </button>
+        </div>
+      </SettingSection>
+
       <p
         className="text-center text-xs pb-4"
         style={{ color: "var(--color-text-muted)" }}
       >
-        MoneyZombie · All data stored locally on your device
+        MoneyZombie · Your data is private and secure
       </p>
     </div>
   );

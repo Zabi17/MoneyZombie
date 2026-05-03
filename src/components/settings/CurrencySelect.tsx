@@ -1,14 +1,16 @@
 import { CURRENCIES } from "../../constants/defaults";
+import { useAuth } from "../../hooks/useAuth";
 import { useAppStore } from "../../store/useAppStore";
 
 export function CurrencySelect() {
   const currency = useAppStore((s) => s.settings.currency);
   const updateSettings = useAppStore((s) => s.updateSettings);
+  const { user } = useAuth();
 
   return (
     <select
       value={currency}
-      onChange={(e) => updateSettings({ currency: e.target.value })}
+      onChange={(e) => updateSettings({ currency: e.target.value }, user!.id)}
       className="px-3 py-2 rounded-xl text-sm font-medium outline-none cursor-pointer"
       style={{
         background: "var(--color-surface-2)",

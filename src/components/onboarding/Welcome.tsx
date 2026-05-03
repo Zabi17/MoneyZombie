@@ -1,16 +1,18 @@
 import { useState } from "react";
-import { Sparkles, ArrowRight } from "lucide-react";
+import { ArrowRight } from "lucide-react";
 import { useAppStore } from "../../store/useAppStore";
 import { CURRENCIES } from "../../constants/defaults";
 
-export function Welcome() {
+type Props = { userId: string };
+
+export function Welcome({ userId }: Props) {
   const updateSettings = useAppStore((s) => s.updateSettings);
   const [name, setName] = useState("");
   const [currency, setCurrency] = useState("INR");
   const [step, setStep] = useState<1 | 2>(1);
 
   const handleFinish = () => {
-    updateSettings({ name: name.trim() || "Friend", currency });
+    updateSettings({ name: name.trim() || "Friend", currency }, userId);
   };
 
   const inputStyle = {
@@ -25,34 +27,24 @@ export function Welcome() {
       style={{ background: "var(--color-background)" }}
     >
       <div className="w-full max-w-sm space-y-8">
-        {/* Logo */}
-        <div className="flex flex-col items-center gap-3 text-center">
-          <div
-            className="w-16 h-16 rounded-3xl flex items-center justify-center shadow-2xl"
-            style={{ background: "var(--color-accent)" }}
+        <div className="text-center">
+          <h1
+            className="text-3xl font-bold"
+            style={{
+              fontFamily: "var(--font-display)",
+              color: "var(--color-text-primary)",
+            }}
           >
-            <Sparkles size={28} color="black" />
-          </div>
-          <div>
-            <h1
-              className="text-3xl font-bold"
-              style={{
-                fontFamily: "var(--font-display)",
-                color: "var(--color-text-primary)",
-              }}
-            >
-              Welcome to MoneyZombie
-            </h1>
-            <p
-              className="text-sm mt-1"
-              style={{ color: "var(--color-text-muted)" }}
-            >
-              Your personal finance tracker
-            </p>
-          </div>
+            One last thing
+          </h1>
+          <p
+            className="text-sm mt-1"
+            style={{ color: "var(--color-text-muted)" }}
+          >
+            Let's personalize your experience
+          </p>
         </div>
 
-        {/* Step 1 — Name */}
         {step === 1 && (
           <div className="space-y-4">
             <div>
@@ -86,7 +78,6 @@ export function Welcome() {
           </div>
         )}
 
-        {/* Step 2 — Currency */}
         {step === 2 && (
           <div className="space-y-4">
             <div>

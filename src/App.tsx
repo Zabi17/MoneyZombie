@@ -1,8 +1,10 @@
+import { useEffect } from "react";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AppLayout } from "./components/layout/AppLayout";
+import { LoginScreen } from "./components/auth/LoginScreen";
 import { Welcome } from "./components/onboarding/Welcome";
 import { useAppStore } from "./store/useAppStore";
-import { useEffect } from "react";
+import { useAuth } from "./hooks/useAuth";
 import Dashboard from "./pages/Dashboard";
 import Transactions from "./pages/Transactions";
 import Budgets from "./pages/Budgets";
@@ -12,15 +14,27 @@ import Settings from "./pages/Settings";
 import NotFound from "./pages/NotFound";
 
 export default function App() {
+  const { user, loading: authLoading } = useAuth();
   const loadAll = useAppStore((s) => s.loadAll);
+  const reset = useAppStore((s) => s.reset);
   const loadState = useAppStore((s) => s.loadState);
   const name = useAppStore((s) => s.settings.name);
 
+  // When user logs in, load their data. When they log out, clear it.
   useEffect(() => {
-    loadAll();
-  }, []);
+    if (user) {
+      loadAll(user.id);
+    } else if (!authLoading) {
+      reset();
+    }
+  }, [user, authLoading]);
 
-  if (loadState === "idle" || loadState === "loading") {
+  // ── Loading states ──────────────────────────────────────────────────────
+  if (
+    authLoading ||
+    (user && loadState === "idle") ||
+    loadState === "loading"
+  ) {
     return (
       <div
         className="min-h-screen flex items-center justify-center"
@@ -39,6 +53,7 @@ export default function App() {
     );
   }
 
+  // ── Error state ─────────────────────────────────────────────────────────
   if (loadState === "error") {
     return (
       <div
@@ -59,7 +74,7 @@ export default function App() {
             Could not reach the database. Check your internet connection.
           </p>
           <button
-            onClick={() => loadAll()}
+            onClick={() => user && loadAll(user.id)}
             className="px-4 py-2 rounded-xl text-sm font-bold"
             style={{ background: "var(--color-accent)", color: "black" }}
           >
@@ -70,8 +85,13 @@ export default function App() {
     );
   }
 
-  if (!name) return <Welcome />;
+  // ── Not logged in ────────────────────────────────────────────────────────
+  if (!user) return <LoginScreen />;
 
+  // ── Logged in but no name yet (new user) ────────────────────────────────
+  if (!name) return <Welcome userId={user.id} />;
+
+  // ── Main app ─────────────────────────────────────────────────────────────
   return (
     <BrowserRouter>
       <Routes>
@@ -83,7 +103,6 @@ export default function App() {
           <Route path="reports" element={<Reports />} />
           <Route path="settings" element={<Settings />} />
         </Route>
-        {/* Catch-all — outside AppLayout so it's full screen */}
         <Route path="*" element={<NotFound />} />
       </Routes>
     </BrowserRouter>

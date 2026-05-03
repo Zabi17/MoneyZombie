@@ -4,6 +4,7 @@ import { useAppStore } from "../../store/useAppStore";
 import { Category, TransactionType } from "../../types";
 import { IconPicker } from "./IconPicker";
 import { ColorPicker } from "./ColorPicker";
+import { useAuth } from "../../hooks/useAuth";
 import * as Icons from "lucide-react";
 
 type Props = {
@@ -22,7 +23,7 @@ const EMPTY = {
 export function CategoryForm({ open, onClose, editing }: Props) {
   const addCategory = useAppStore((s) => s.addCategory);
   const updateCategory = useAppStore((s) => s.updateCategory);
-
+  const { user } = useAuth();
   const [form, setForm] = useState(EMPTY);
   const [error, setError] = useState("");
 
@@ -50,7 +51,7 @@ export function CategoryForm({ open, onClose, editing }: Props) {
     if (editing) {
       updateCategory(editing.id, form);
     } else {
-      addCategory(form);
+      addCategory(form, user!.id);
     }
     onClose();
   };

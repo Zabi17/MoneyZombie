@@ -13,25 +13,24 @@ type AppStore = {
   settings: AppSettings;
   loadState: LoadState;
 
-  // Bootstrap — call once on app mount
-  loadAll: () => Promise<void>;
+  loadAll: (userId: string) => Promise<void>;
+  reset: () => void;
 
-  // Transactions
-  addTransaction: (t: Omit<Transaction, "id" | "createdAt">) => Promise<void>;
+  addTransaction: (
+    t: Omit<Transaction, "id" | "createdAt">,
+    userId: string,
+  ) => Promise<void>;
   updateTransaction: (id: string, t: Partial<Transaction>) => Promise<void>;
   deleteTransaction: (id: string) => Promise<void>;
 
-  // Categories
-  addCategory: (c: Omit<Category, "id">) => Promise<void>;
+  addCategory: (c: Omit<Category, "id">, userId: string) => Promise<void>;
   updateCategory: (id: string, c: Partial<Category>) => Promise<void>;
   deleteCategory: (id: string) => Promise<void>;
 
-  // Budgets
-  setBudget: (b: Omit<Budget, "id">) => Promise<void>;
+  setBudget: (b: Omit<Budget, "id">, userId: string) => Promise<void>;
   deleteBudget: (id: string) => Promise<void>;
 
-  // Settings
-  updateSettings: (s: Partial<AppSettings>) => Promise<void>;
+  updateSettings: (s: Partial<AppSettings>, userId: string) => Promise<void>;
 };
 
 export const useAppStore = create<AppStore>()((set, get) => ({
@@ -41,21 +40,30 @@ export const useAppStore = create<AppStore>()((set, get) => ({
   settings: DEFAULT_SETTINGS,
   loadState: "idle",
 
+  reset: () =>
+    set({
+      transactions: [],
+      categories: DEFAULT_CATEGORIES,
+      budgets: [],
+      settings: DEFAULT_SETTINGS,
+      loadState: "idle",
+    }),
+
   // ── Bootstrap ──────────────────────────────────────────────────────────────
-  loadAll: async () => {
+  loadAll: async (userId: string) => {
     set({ loadState: "loading" });
     try {
       const [txRes, catRes, budRes, setRes] = await Promise.all([
         supabase
           .from("transactions")
           .select("*")
+          .eq("user_id", userId)
           .order("date", { ascending: false }),
-        supabase.from("categories").select("*"),
-        supabase.from("budgets").select("*"),
-        supabase.from("settings").select("*").eq("id", 1).single(),
+        supabase.from("categories").select("*").eq("user_id", userId),
+        supabase.from("budgets").select("*").eq("user_id", userId),
+        supabase.from("settings").select("*").eq("user_id", userId).single(),
       ]);
 
-      // Map snake_case DB columns → camelCase app types
       const transactions: Transaction[] = (txRes.data ?? []).map((r) => ({
         id: r.id,
         title: r.title,
@@ -67,6 +75,7 @@ export const useAppStore = create<AppStore>()((set, get) => ({
         createdAt: r.created_at,
       }));
 
+      // If no categories yet, seed defaults for this user
       const categories: Category[] =
         (catRes.data ?? []).length > 0
           ? catRes.data!.map((r) => ({
@@ -78,15 +87,15 @@ export const useAppStore = create<AppStore>()((set, get) => ({
             }))
           : DEFAULT_CATEGORIES;
 
-      // If no categories in DB yet, seed them
       if ((catRes.data ?? []).length === 0) {
         await supabase.from("categories").insert(
           DEFAULT_CATEGORIES.map((c) => ({
-            id: c.id,
+            id: `${c.id}_${userId.slice(0, 8)}`,
             name: c.name,
             icon: c.icon,
             color: c.color,
             type: c.type,
+            user_id: userId,
           })),
         );
       }
@@ -106,6 +115,16 @@ export const useAppStore = create<AppStore>()((set, get) => ({
           }
         : DEFAULT_SETTINGS;
 
+      // If no settings row yet, create one for this user
+      if (!setRes.data) {
+        await supabase.from("settings").insert({
+          user_id: userId,
+          currency: DEFAULT_SETTINGS.currency,
+          name: DEFAULT_SETTINGS.name,
+          theme: DEFAULT_SETTINGS.theme,
+        });
+      }
+
       set({ transactions, categories, budgets, settings, loadState: "ready" });
     } catch (e) {
       console.error("loadAll failed", e);
@@ -114,10 +133,9 @@ export const useAppStore = create<AppStore>()((set, get) => ({
   },
 
   // ── Transactions ───────────────────────────────────────────────────────────
-  addTransaction: async (t) => {
+  addTransaction: async (t, userId) => {
     const id = nanoid();
     const createdAt = new Date().toISOString();
-    // Optimistic update
     set((s) => ({
       transactions: [{ ...t, id, createdAt }, ...s.transactions],
     }));
@@ -130,6 +148,7 @@ export const useAppStore = create<AppStore>()((set, get) => ({
       date: t.date,
       note: t.note ?? null,
       created_at: createdAt,
+      user_id: userId,
     });
   },
 
@@ -160,7 +179,7 @@ export const useAppStore = create<AppStore>()((set, get) => ({
   },
 
   // ── Categories ─────────────────────────────────────────────────────────────
-  addCategory: async (c) => {
+  addCategory: async (c, userId) => {
     const id = nanoid();
     set((s) => ({ categories: [...s.categories, { ...c, id }] }));
     await supabase.from("categories").insert({
@@ -169,6 +188,7 @@ export const useAppStore = create<AppStore>()((set, get) => ({
       icon: c.icon,
       color: c.color,
       type: c.type,
+      user_id: userId,
     });
   },
 
@@ -197,7 +217,7 @@ export const useAppStore = create<AppStore>()((set, get) => ({
   },
 
   // ── Budgets ────────────────────────────────────────────────────────────────
-  setBudget: async (b) => {
+  setBudget: async (b, userId) => {
     const existing = get().budgets.find(
       (x) => x.categoryId === b.categoryId && x.month === b.month,
     );
@@ -219,6 +239,7 @@ export const useAppStore = create<AppStore>()((set, get) => ({
         category_id: b.categoryId,
         amount: b.amount,
         month: b.month,
+        user_id: userId,
       });
     }
   },
@@ -229,7 +250,7 @@ export const useAppStore = create<AppStore>()((set, get) => ({
   },
 
   // ── Settings ───────────────────────────────────────────────────────────────
-  updateSettings: async (s) => {
+  updateSettings: async (s, userId) => {
     set((state) => ({ settings: { ...state.settings, ...s } }));
     await supabase
       .from("settings")
@@ -238,6 +259,6 @@ export const useAppStore = create<AppStore>()((set, get) => ({
         ...(s.name !== undefined && { name: s.name }),
         ...(s.theme !== undefined && { theme: s.theme }),
       })
-      .eq("id", 1);
+      .eq("user_id", userId);
   },
 }));

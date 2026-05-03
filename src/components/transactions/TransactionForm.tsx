@@ -3,6 +3,7 @@ import { useAppStore } from "../../store/useAppStore";
 import { Transaction, TransactionType } from "../../types";
 import { useCurrency } from "../../hooks/useCurrency";
 import { format } from "date-fns";
+import { useAuth } from "../../hooks/useAuth";
 import { nanoid } from "nanoid";
 import * as Icons from "lucide-react";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "../ui/sheet";
@@ -34,6 +35,7 @@ export function TransactionForm({
   const addTransaction = useAppStore((s) => s.addTransaction);
   const updateTransaction = useAppStore((s) => s.updateTransaction);
   const { symbol } = useCurrency();
+  const { user } = useAuth();
 
   const [form, setForm] = useState(EMPTY);
   const [error, setError] = useState("");
@@ -77,7 +79,7 @@ export function TransactionForm({
     if (editing) {
       updateTransaction(editing.id, payload);
     } else {
-      addTransaction(payload);
+      addTransaction(payload, user!.id);
     }
     onClose();
   };
