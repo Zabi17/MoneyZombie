@@ -87,10 +87,11 @@ export const useAppStore = create<AppStore>()((set, get) => ({
             }))
           : DEFAULT_CATEGORIES;
 
+      // In loadAll, change the seed insert to use the original id, not a modified one
       if ((catRes.data ?? []).length === 0) {
         await supabase.from("categories").insert(
           DEFAULT_CATEGORIES.map((c) => ({
-            id: `${c.id}_${userId.slice(0, 8)}`,
+            id: c.id,
             name: c.name,
             icon: c.icon,
             color: c.color,
@@ -98,6 +99,8 @@ export const useAppStore = create<AppStore>()((set, get) => ({
             user_id: userId,
           })),
         );
+
+        set({ categories: DEFAULT_CATEGORIES });
       }
 
       const budgets: Budget[] = (budRes.data ?? []).map((r) => ({
@@ -182,14 +185,17 @@ export const useAppStore = create<AppStore>()((set, get) => ({
   addCategory: async (c, userId) => {
     const id = nanoid();
     set((s) => ({ categories: [...s.categories, { ...c, id }] }));
-    await supabase.from("categories").insert({
-      id,
-      name: c.name,
-      icon: c.icon,
-      color: c.color,
-      type: c.type,
-      user_id: userId,
-    });
+    await supabase.from("categories").upsert(
+      DEFAULT_CATEGORIES.map((c) => ({
+        id: c.id,
+        name: c.name,
+        icon: c.icon,
+        color: c.color,
+        type: c.type,
+        user_id: userId,
+      })),
+      { onConflict: "user_id, name", ignoreDuplicates: true },
+    );
   },
 
   updateCategory: async (id, c) => {

@@ -12,32 +12,57 @@ import {
 } from "../ui/alert-dialog";
 import { useAppStore } from "../../store/useAppStore";
 import { DEFAULT_CATEGORIES, DEFAULT_SETTINGS } from "../../constants/defaults";
+import { supabase } from "../../lib/supabase";
+import { useAuth } from "../../hooks/useAuth";
 
 export function DangerZone() {
   const [confirmClear, setConfirmClear] = useState(false);
   const [confirmReset, setConfirmReset] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const { user } = useAuth();
 
-  const clearTransactions = () => useAppStore.setState({ transactions: [] });
+  const clearTransactions = async () => {
+    if (!user) return;
+    setLoading(true);
+    await supabase.from("transactions").delete().eq("user_id", user.id);
+    useAppStore.setState({ transactions: [] });
+    setConfirmClear(false);
+    setLoading(false);
+  };
 
-  const resetAll = () => {
+  const resetAll = async () => {
+    if (!user) return;
+    setLoading(true);
+
+    // Wipe all user data from DB
+    await Promise.all([
+      supabase.from("transactions").delete().eq("user_id", user.id),
+      supabase.from("budgets").delete().eq("user_id", user.id),
+      supabase.from("categories").delete().eq("user_id", user.id),
+      supabase.from("settings").delete().eq("user_id", user.id),
+    ]);
+
+    // Reset local state
     useAppStore.setState({
       transactions: [],
       budgets: [],
       categories: DEFAULT_CATEGORIES,
       settings: DEFAULT_SETTINGS,
     });
-    localStorage.removeItem("MoneyZombie-store");
-    window.location.reload();
+
+    setLoading(false);
+    window.location.reload(); // loadAll will re-seed defaults on next mount
   };
 
   const btnBase =
-    "flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold transition-opacity hover:opacity-80 w-full";
+    "flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold transition-opacity hover:opacity-80 w-full disabled:opacity-40";
 
   return (
     <>
       <div className="space-y-2">
         <button
           onClick={() => setConfirmClear(true)}
+          disabled={loading}
           className={btnBase}
           style={{
             background: "var(--color-expense)15",
@@ -50,6 +75,7 @@ export function DangerZone() {
         </button>
         <button
           onClick={() => setConfirmReset(true)}
+          disabled={loading}
           className={btnBase}
           style={{
             background: "var(--color-expense)25",
@@ -97,13 +123,11 @@ export function DangerZone() {
               Cancel
             </AlertDialogCancel>
             <AlertDialogAction
-              onClick={() => {
-                clearTransactions();
-                setConfirmClear(false);
-              }}
+              onClick={clearTransactions}
+              disabled={loading}
               style={{ background: "var(--color-expense)", color: "white" }}
             >
-              Clear All
+              {loading ? "Clearing..." : "Clear All"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -149,9 +173,10 @@ export function DangerZone() {
             </AlertDialogCancel>
             <AlertDialogAction
               onClick={resetAll}
+              disabled={loading}
               style={{ background: "var(--color-expense)", color: "white" }}
             >
-              Reset Everything
+              {loading ? "Resetting..." : "Reset Everything"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
