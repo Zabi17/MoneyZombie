@@ -15,6 +15,7 @@ interface ParticlesProps {
   disableRotation?: boolean;
   pixelRatio?: number;
   className?: string;
+  particleShape?: 'circle' | 'money';
 }
 
 const defaultColors: string[] = ['#ffffff', '#ffffff', '#ffffff'];
@@ -81,12 +82,47 @@ const fragment = /* glsl */ `
   
   uniform float uTime;
   uniform float uAlphaParticles;
+  uniform float uParticleShape;
   varying vec4 vRandom;
   varying vec3 vColor;
+
+  float rect(vec2 uv, vec2 center, vec2 size) {
+    vec2 halfSize = size * 0.5;
+    vec2 d = abs(uv - center) - halfSize;
+    return 1.0 - smoothstep(0.0, 0.018, max(d.x, d.y));
+  }
   
   void main() {
     vec2 uv = gl_PointCoord.xy;
     float d = length(uv - vec2(0.5));
+
+    if(uParticleShape > 0.5) {
+      uv.y = 1.0 - uv.y;
+
+      float bill = 1.0 - smoothstep(0.0, 0.035, max(abs(uv.x - 0.5) - 0.39, abs(uv.y - 0.5) - 0.24));
+      float inset = 1.0 - smoothstep(0.0, 0.035, max(abs(uv.x - 0.5) - 0.33, abs(uv.y - 0.5) - 0.18));
+      float border = clamp(bill - inset, 0.0, 1.0);
+      float mark =
+        rect(uv, vec2(0.50, 0.50), vec2(0.045, 0.54)) +
+        rect(uv, vec2(0.50, 0.69), vec2(0.28, 0.065)) +
+        rect(uv, vec2(0.50, 0.50), vec2(0.31, 0.065)) +
+        rect(uv, vec2(0.50, 0.31), vec2(0.28, 0.065)) +
+        rect(uv, vec2(0.39, 0.60), vec2(0.065, 0.19)) +
+        rect(uv, vec2(0.61, 0.40), vec2(0.065, 0.19));
+      float shape = bill;
+
+      if(shape < 0.08) {
+        discard;
+      }
+
+      vec3 billColor = vec3(0.34, 0.82, 0.48);
+      vec3 edgeColor = vec3(0.74, 1.0, 0.58);
+      vec3 markColor = vec3(0.07, 0.32, 0.16);
+      vec3 ink = mix(billColor, edgeColor, border);
+      ink = mix(ink, markColor, clamp(mark, 0.0, 1.0));
+      gl_FragColor = vec4(ink + 0.04 * sin(uv.yxx + uTime + vRandom.y * 6.28), shape);
+      return;
+    }
     
     if(uAlphaParticles < 0.5) {
       if(d > 0.5) {
@@ -113,7 +149,8 @@ const Particles: React.FC<ParticlesProps> = ({
   cameraDistance = 20,
   disableRotation = false,
   pixelRatio = 1,
-  className
+  className,
+  particleShape = 'circle'
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const mouseRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
@@ -185,7 +222,8 @@ const Particles: React.FC<ParticlesProps> = ({
         uSpread: { value: particleSpread },
         uBaseSize: { value: particleBaseSize * pixelRatio },
         uSizeRandomness: { value: sizeRandomness },
-        uAlphaParticles: { value: alphaParticles ? 1 : 0 }
+        uAlphaParticles: { value: alphaParticles ? 1 : 0 },
+        uParticleShape: { value: particleShape === 'money' ? 1 : 0 }
       },
       transparent: true,
       depthTest: false
@@ -246,7 +284,8 @@ const Particles: React.FC<ParticlesProps> = ({
     sizeRandomness,
     cameraDistance,
     disableRotation,
-    pixelRatio
+    pixelRatio,
+    particleShape
   ]);
 
   return <div ref={containerRef} className={`relative w-full h-full ${className}`} />;

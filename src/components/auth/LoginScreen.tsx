@@ -20,11 +20,12 @@ export function LoginScreen() {
     >
       <div className="absolute inset-0 z-0">
         <Particles
-          particleColors={["#ffffff"]}
+          particleColors={["#57d17b", "#f1c84b", "#ffffff"]}
           particleCount={200}
           particleSpread={10}
           speed={0.1}
-          particleBaseSize={100}
+          particleBaseSize={140}
+          particleShape="money"
           moveParticlesOnHover
           alphaParticles={false}
           disableRotation={false}
@@ -43,6 +44,8 @@ export function LoginScreen() {
               <img
                 src="/logo.png"
                 alt="Logo"
+                loading="lazy"
+                decoding="async"
                 className="w-full h-full object-cover transition-transform duration-300 hover:scale-125"
               />
             </div>
@@ -50,7 +53,7 @@ export function LoginScreen() {
               <SplitText
                 text="MoneyZombie"
                 className="text-2xl font-semibold text-center"
-                delay={50}
+                delay={200}
                 duration={1.25}
                 ease="power3.out"
                 splitType="chars"
