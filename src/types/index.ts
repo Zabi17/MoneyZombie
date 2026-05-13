@@ -1,4 +1,40 @@
-export type TransactionType = "expense" | "income";
+export type SavingsPotType = "goal" | "recurring" | "emergency";
+export type SavingsTransactionType = "deposit" | "withdrawal" | "transfer";
+export type TransactionType = "income" | "expense" | "transfer";
+
+export type SavingsPot = {
+  id: string;
+  userId: string;
+  name: string;
+  icon: string;
+  color: string;
+  type: SavingsPotType;
+  currentAmount: number;
+  isCompleted: boolean;
+  createdAt: string;
+
+  // goal only
+  targetAmount?: number;
+  deadline?: string;
+
+  // recurring only
+  recurringAmount?: number;
+
+  // emergency only
+  isLocked?: boolean;
+  floorAmount?: number;
+};
+
+export type SavingsTransaction = {
+  id: string;
+  userId: string;
+  type: SavingsTransactionType;
+  amount: number;
+  fromPotId: string | null; // null = main wallet
+  toPotId: string | null; // null = main wallet
+  note?: string;
+  createdAt: string;
+};
 
 export type Category = {
   id: string;

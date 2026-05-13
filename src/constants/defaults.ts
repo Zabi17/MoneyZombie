@@ -1,4 +1,4 @@
-import { Category, AppSettings } from "../types";
+import { Category, AppSettings, TransactionType } from "../types";
 
 export const DEFAULT_CATEGORIES: Category[] = [
   {
@@ -77,6 +77,13 @@ export const DEFAULT_CATEGORIES: Category[] = [
     icon: "TrendingUp",
     color: "#6366f1",
     type: "income",
+  },
+  {
+    id: "savings",
+    name: "Savings",
+    icon: "Landmark",
+    color: "#4ade80",
+    type: "transfer" as TransactionType,
   },
   {
     id: "other",

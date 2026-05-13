@@ -1,5 +1,6 @@
 import { useEffect } from "react";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
+import Loader from "./components/ui/Loader";
 import { AppLayout } from "./components/layout/AppLayout";
 import { LoginScreen } from "./components/auth/LoginScreen";
 import { Welcome } from "./components/onboarding/Welcome";
@@ -7,6 +8,7 @@ import { useAppStore } from "./store/useAppStore";
 import { useAuth } from "./hooks/useAuth";
 import Dashboard from "./pages/Dashboard";
 import Transactions from "./pages/Transactions";
+import Savings from "./pages/Savings";
 import Budgets from "./pages/Budgets";
 import Categories from "./pages/Categories";
 import Reports from "./pages/Reports";
@@ -40,15 +42,7 @@ export default function App() {
         className="min-h-screen flex items-center justify-center"
         style={{ background: "var(--color-background)" }}
       >
-        <div className="flex flex-col items-center gap-3">
-          <div
-            className="w-10 h-10 rounded-2xl animate-pulse"
-            style={{ background: "var(--color-accent)" }}
-          />
-          <p className="text-sm" style={{ color: "var(--color-text-muted)" }}>
-            Loading...
-          </p>
-        </div>
+        <Loader color="var(--color-accent)" />
       </div>
     );
   }
@@ -99,6 +93,7 @@ export default function App() {
           <Route index element={<Dashboard />} />
           <Route path="transactions" element={<Transactions />} />
           <Route path="budgets" element={<Budgets />} />
+          <Route path="savings" element={<Savings />} />
           <Route path="categories" element={<Categories />} />
           <Route path="reports" element={<Reports />} />
           <Route path="settings" element={<Settings />} />

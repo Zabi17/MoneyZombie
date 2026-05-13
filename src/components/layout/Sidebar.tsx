@@ -5,6 +5,7 @@ import {
   PiggyBank,
   Tag,
   BarChart3,
+  Landmark,
   Settings,
   Sparkles,
 } from "lucide-react";
@@ -17,6 +18,7 @@ const NAV = [
   { to: "/", icon: LayoutDashboard, label: "Dashboard" },
   { to: "/transactions", icon: ArrowLeftRight, label: "Transactions" },
   { to: "/budgets", icon: PiggyBank, label: "Budgets" },
+  { to: "/savings", icon: Landmark, label: "Savings" },
   { to: "/categories", icon: Tag, label: "Categories" },
   { to: "/reports", icon: BarChart3, label: "Reports" },
   { to: "/settings", icon: Settings, label: "Settings" },

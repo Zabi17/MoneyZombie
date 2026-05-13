@@ -24,8 +24,10 @@ export function useTransactions(month?: string) {
 
   return useMemo(() => {
     const filtered = month
-      ? transactions.filter((t) => t.date.startsWith(month))
-      : transactions;
+      ? transactions.filter(
+          (t) => t.date.startsWith(month) && t.type !== "transfer",
+        )
+      : transactions.filter((t) => t.type !== "transfer");
 
     const expenses = filtered.filter((t) => t.type === "expense");
     const income = filtered.filter((t) => t.type === "income");
@@ -43,9 +45,9 @@ export function useTransactionsMulti(months?: string[]) {
   const transactions = useAppStore((s) => s.transactions);
 
   return useMemo(() => {
-    const filtered = months
-      ? transactions.filter((t) => months.some((m) => t.date.startsWith(m)))
-      : transactions;
+  const filtered = months
+    ? transactions.filter((t) => months.some((m) => t.date.startsWith(m)) && t.type !== "transfer")
+    : transactions.filter((t) => t.type !== "transfer");
 
     const expenses = filtered.filter((t) => t.type === "expense");
     const income = filtered.filter((t) => t.type === "income");
@@ -63,14 +65,28 @@ export function useRunningBalance(upToMonth: string) {
   const transactions = useAppStore((s) => s.transactions);
 
   return useMemo(() => {
-    // Include all transactions whose month <= upToMonth
     const prior = transactions.filter((t) => t.date.slice(0, 7) <= upToMonth);
+
     const income = prior
       .filter((t) => t.type === "income")
       .reduce((s, t) => s + t.amount, 0);
+
     const expense = prior
       .filter((t) => t.type === "expense")
       .reduce((s, t) => s + t.amount, 0);
-    return income - expense;
+
+    // Deposits to savings pots deduct from wallet
+    // Withdrawals from savings pots add back to wallet
+    const savingsDeposits = prior
+      .filter((t) => t.type === "transfer" && t.title.startsWith("Saved to"))
+      .reduce((s, t) => s + t.amount, 0);
+
+    const savingsWithdrawals = prior
+      .filter(
+        (t) => t.type === "transfer" && t.title.startsWith("Withdrawn from"),
+      )
+      .reduce((s, t) => s + t.amount, 0);
+
+    return income - expense - savingsDeposits + savingsWithdrawals;
   }, [transactions, upToMonth]);
 }

@@ -122,18 +122,18 @@ export default function Dashboard() {
           icon={<Wallet size={18} />}
         />
         <StatCard
-          label="Income"
-          value={fmt(totalIncome)}
-          sub={scopeLabel}
-          accent="var(--color-income)"
-          icon={<TrendingUp size={18} />}
-        />
-        <StatCard
           label="Expenses"
           value={fmt(totalExpense)}
           sub={scopeLabel}
           accent="var(--color-expense)"
           icon={<TrendingDown size={18} />}
+        />
+        <StatCard
+          label="Income"
+          value={fmt(totalIncome)}
+          sub={scopeLabel}
+          accent="var(--color-income)"
+          icon={<TrendingUp size={18} />}
         />
       </div>
 
