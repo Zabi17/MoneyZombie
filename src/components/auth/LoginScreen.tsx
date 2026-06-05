@@ -10,6 +10,7 @@ export function LoginScreen() {
   const handleLogin = async () => {
     setLoading(true);
     await signInWithGoogle();
+    setTimeout(() => {setLoading(false);}, 3000);
     // Page will redirect to Google, so no need to setLoading(false)
   };
 

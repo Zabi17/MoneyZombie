@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, type ElementType } from "react";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "../ui/sheet";
 import { SavingsPot, SavingsTransaction } from "../../types";
 import { useCurrency } from "../../hooks/useCurrency";
@@ -11,8 +11,8 @@ import {
   ArrowLeftRight,
   Trash2,
   Lock,
-  AlertTriangle,
   ChevronDown,
+  X,
 } from "lucide-react";
 import * as Icons from "lucide-react";
 
@@ -39,6 +39,7 @@ export function PotDrawer({ pot, onClose, savingsTransactions }: Props) {
   const [transferTo, setTransferTo] = useState("");
   const [showWarning, setShowWarning] = useState(false);
   const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
 
   const reset = () => {
     setAction(null);
@@ -47,6 +48,7 @@ export function PotDrawer({ pot, onClose, savingsTransactions }: Props) {
     setTransferTo("");
     setShowWarning(false);
     setError("");
+    setLoading(false);
   };
 
   const handleClose = () => {
@@ -60,7 +62,6 @@ export function PotDrawer({ pot, onClose, savingsTransactions }: Props) {
     if (!amount || isNaN(amt) || amt <= 0)
       return setError("Enter a valid amount");
 
-    // Withdrawal guard
     if (action === "withdrawal") {
       if (amt > pot.currentAmount)
         return setError("Amount exceeds pot balance");
@@ -77,21 +78,23 @@ export function PotDrawer({ pot, onClose, savingsTransactions }: Props) {
       if (!transferTo) return setError("Select a destination pot");
       if (amt > pot.currentAmount)
         return setError("Amount exceeds pot balance");
-      await transferBetweenPots(
-        pot.id,
-        transferTo,
-        amt,
-        note || undefined,
-        user.id,
-      );
-    } else if (action === "deposit") {
-      await depositToPot(pot.id, amt, note || undefined, user.id);
-    } else if (action === "withdrawal") {
-      await withdrawFromPot(pot.id, amt, note || undefined, user.id);
     }
 
-    reset();
-    onClose();
+    setLoading(true);
+    try {
+      if (action === "transfer") {
+        await transferBetweenPots(pot.id, transferTo, amt, note || undefined, user.id);
+      } else if (action === "deposit") {
+        await depositToPot(pot.id, amt, note || undefined, user.id);
+      } else if (action === "withdrawal") {
+        await withdrawFromPot(pot.id, amt, note || undefined, user.id);
+      }
+      reset();
+      onClose();
+    } catch {
+      setError("Something went wrong, try again");
+      setLoading(false);
+    }
   };
 
   const otherPots = savingsPots.filter((p) => p.id !== pot?.id);
@@ -110,6 +113,30 @@ export function PotDrawer({ pot, onClose, savingsTransactions }: Props) {
     pot.targetAmount && pot.targetAmount > 0
       ? Math.min((pot.currentAmount / pot.targetAmount) * 100, 100)
       : null;
+
+  const actionMeta: {
+    [K in NonNullable<Action>]: {
+      label: string;
+      color: string;
+      icon: ElementType;
+    };
+  } = {
+    deposit: {
+      label: "Deposit",
+      color: "var(--color-income)",
+      icon: ArrowDownLeft,
+    },
+    withdrawal: {
+      label: "Withdraw",
+      color: "var(--color-expense)",
+      icon: ArrowUpRight,
+    },
+    transfer: {
+      label: "Transfer",
+      color: "var(--color-dash)",
+      icon: ArrowLeftRight,
+    },
+  };
 
   return (
     <Sheet open={!!pot} onOpenChange={(v) => !v && handleClose()}>
@@ -149,10 +176,7 @@ export function PotDrawer({ pot, onClose, savingsTransactions }: Props) {
           className="rounded-2xl p-4 mb-4"
           style={{ background: "var(--color-surface-2)" }}
         >
-          <p
-            className="text-xs mb-1"
-            style={{ color: "var(--color-text-muted)" }}
-          >
+          <p className="text-xs mb-1" style={{ color: "var(--color-text-muted)" }}>
             Current Balance
           </p>
           <p
@@ -163,10 +187,7 @@ export function PotDrawer({ pot, onClose, savingsTransactions }: Props) {
           </p>
           {pot.targetAmount && (
             <>
-              <p
-                className="text-xs mt-1"
-                style={{ color: "var(--color-text-muted)" }}
-              >
+              <p className="text-xs mt-1" style={{ color: "var(--color-text-muted)" }}>
                 Target: {fmt(pot.targetAmount)}
                 {pot.deadline ? ` · Due ${pot.deadline}` : ""}
               </p>
@@ -178,16 +199,11 @@ export function PotDrawer({ pot, onClose, savingsTransactions }: Props) {
                   className="h-full rounded-full"
                   style={{
                     width: `${progress}%`,
-                    background: pot.isCompleted
-                      ? "var(--color-income)"
-                      : pot.color,
+                    background: pot.isCompleted ? "var(--color-income)" : pot.color,
                   }}
                 />
               </div>
-              <p
-                className="text-xs mt-1"
-                style={{ color: "var(--color-text-muted)" }}
-              >
+              <p className="text-xs mt-1" style={{ color: "var(--color-text-muted)" }}>
                 {Math.round(progress ?? 0)}% reached
               </p>
             </>
@@ -202,24 +218,21 @@ export function PotDrawer({ pot, onClose, savingsTransactions }: Props) {
                 key: "withdrawal",
                 label: "Withdraw",
                 icon: ArrowUpRight,
-                color: "expense",
                 bgColor: "var(--color-expense)",
               },
               {
                 key: "transfer",
                 label: "Transfer",
                 icon: ArrowLeftRight,
-                color: "dash",
                 bgColor: "var(--color-dash)",
               },
               {
                 key: "deposit",
                 label: "Deposit",
                 icon: ArrowDownLeft,
-                color: "income",
                 bgColor: "var(--color-income)",
               },
-            ].map(({ key, label, icon: Icon, color, bgColor }) => (
+            ].map(({ key, label, icon: Icon, bgColor }) => (
               <button
                 key={key}
                 onClick={() => setAction(key as Action)}
@@ -234,6 +247,173 @@ export function PotDrawer({ pot, onClose, savingsTransactions }: Props) {
                 {label}
               </button>
             ))}
+          </div>
+        )}
+
+        {/* ── Action form ── */}
+        {action && (
+          <div
+            className="rounded-2xl p-4 mb-4 space-y-3"
+            style={{
+              background: "var(--color-surface-2)",
+              border: "1px solid var(--color-border)",
+            }}
+          >
+            {/* Form header */}
+            <div className="flex items-center justify-between mb-1">
+              <div className="flex items-center gap-2">
+                {(() => {
+                  const { icon: ActionIcon, color, label } = actionMeta[action];
+                  return (
+                    <>
+                      <ActionIcon size={15} style={{ color }} />
+                      <p
+                        className="text-sm font-bold"
+                        style={{
+                          color,
+                          fontFamily: "var(--font-display)",
+                        }}
+                      >
+                        {label}
+                      </p>
+                    </>
+                  );
+                })()}
+              </div>
+              <button
+                onClick={reset}
+                className="p-1 rounded-lg hover:opacity-70 transition-opacity"
+                style={{ color: "var(--color-text-muted)" }}
+              >
+                <X size={15} />
+              </button>
+            </div>
+
+            {/* Amount input */}
+            <div>
+              <label
+                className="text-xs font-medium mb-1 block"
+                style={{ color: "var(--color-text-muted)" }}
+              >
+                Amount
+              </label>
+              <div className="relative">
+                <span
+                  className="absolute left-3 top-1/2 -translate-y-1/2 text-sm font-medium"
+                  style={{ color: "var(--color-text-muted)" }}
+                >
+                  {symbol}
+                </span>
+                <input
+                  type="number"
+                  min="0"
+                  step="any"
+                  placeholder="0.00"
+                  value={amount}
+                  onChange={(e) => {
+                    setAmount(e.target.value);
+                    setError("");
+                    setShowWarning(false);
+                  }}
+                  className={inputClass}
+                  style={{ ...inputStyle, paddingLeft: "2rem" }}
+                  autoFocus
+                />
+              </div>
+            </div>
+
+            {/* Transfer destination */}
+            {action === "transfer" && (
+              <div>
+                <label
+                  className="text-xs font-medium mb-1 block"
+                  style={{ color: "var(--color-text-muted)" }}
+                >
+                  To Pot
+                </label>
+                <div className="relative">
+                  <select
+                    value={transferTo}
+                    onChange={(e) => {
+                      setTransferTo(e.target.value);
+                      setError("");
+                    }}
+                    className={inputClass}
+                    style={{
+                      ...inputStyle,
+                      appearance: "none",
+                      paddingRight: "2rem",
+                    }}
+                  >
+                    <option value="">Select pot…</option>
+                    {otherPots.map((p) => (
+                      <option key={p.id} value={p.id}>
+                        {p.name}
+                      </option>
+                    ))}
+                  </select>
+                  <ChevronDown
+                    size={14}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none"
+                    style={{ color: "var(--color-text-muted)" }}
+                  />
+                </div>
+              </div>
+            )}
+
+            {/* Note input */}
+            <div>
+              <label
+                className="text-xs font-medium mb-1 block"
+                style={{ color: "var(--color-text-muted)" }}
+              >
+                Note <span style={{ color: "var(--color-text-muted)", fontWeight: 400 }}>(optional)</span>
+              </label>
+              <input
+                type="text"
+                placeholder="e.g. Monthly contribution"
+                value={note}
+                onChange={(e) => setNote(e.target.value)}
+                className={inputClass}
+                style={inputStyle}
+              />
+            </div>
+
+            {/* Warning banner */}
+            {showWarning && (
+              <div
+                className="rounded-xl px-3 py-2.5 text-xs font-medium"
+                style={{
+                  background: "var(--color-warning)15",
+                  border: "1px solid var(--color-warning)40",
+                  color: "var(--color-warning)",
+                }}
+              >
+                {pot.isLocked
+                  ? "This pot is locked. Withdrawing will override the lock. Tap confirm again to proceed."
+                  : `This will bring the balance below your floor of ${fmt(pot.floorAmount!)}. Tap confirm again to proceed.`}
+              </div>
+            )}
+
+            {/* Error */}
+            {error && (
+              <p className="text-xs font-medium" style={{ color: "var(--color-expense)" }}>
+                {error}
+              </p>
+            )}
+
+            {/* Confirm button */}
+            <button
+              onClick={handleAction}
+              disabled={loading}
+              className="w-full py-2.5 rounded-xl text-sm font-bold transition-opacity hover:opacity-80 disabled:opacity-50"
+              style={{
+                background: actionMeta[action].color,
+                color: "black",
+              }}
+            >
+              {loading ? "Processing…" : showWarning ? "Confirm anyway" : `Confirm ${actionMeta[action].label}`}
+            </button>
           </div>
         )}
 
@@ -291,12 +471,8 @@ export function PotDrawer({ pot, onClose, savingsTransactions }: Props) {
                         >
                           {tx.type}
                         </p>
-                        <p
-                          className="text-xs"
-                          style={{ color: "var(--color-text-muted)" }}
-                        >
-                          {tx.note ??
-                            format(new Date(tx.createdAt), "MMM d, yyyy")}
+                        <p className="text-xs" style={{ color: "var(--color-text-muted)" }}>
+                          {tx.note ?? format(new Date(tx.createdAt), "MMM d, yyyy")}
                         </p>
                       </div>
                     </div>
@@ -304,9 +480,7 @@ export function PotDrawer({ pot, onClose, savingsTransactions }: Props) {
                       className="text-sm font-semibold"
                       style={{
                         fontFamily: "var(--font-display)",
-                        color: isIn
-                          ? "var(--color-income)"
-                          : "var(--color-expense)",
+                        color: isIn ? "var(--color-income)" : "var(--color-expense)",
                       }}
                     >
                       {isIn ? "+" : "-"}
