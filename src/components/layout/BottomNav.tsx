@@ -22,7 +22,7 @@ const NAV = [
 export function BottomNav() {
   return (
     <nav
-      className="lg:hidden fixed bottom-4 left-1/2 -translate-x-1/2 z-50 flex items-center gap-1 px-3 py-2 rounded-2xl shadow-2xl"
+      className="lg:hidden fixed bottom-4 left-1/2 -translate-x-1/2 z-50 flex items-center gap-0.5 px-3 py-2 rounded-2xl shadow-2xl"
       style={{
         background: "var(--color-surface)",
         border: "1px solid var(--color-border)",

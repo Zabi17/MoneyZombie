@@ -40,6 +40,7 @@ export function PotDrawer({ pot, onClose, savingsTransactions }: Props) {
   const [showWarning, setShowWarning] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
 
   const reset = () => {
     setAction(null);
@@ -49,6 +50,7 @@ export function PotDrawer({ pot, onClose, savingsTransactions }: Props) {
     setShowWarning(false);
     setError("");
     setLoading(false);
+    setConfirmDelete(false);
   };
 
   const handleClose = () => {
@@ -176,7 +178,10 @@ export function PotDrawer({ pot, onClose, savingsTransactions }: Props) {
           className="rounded-2xl p-4 mb-4"
           style={{ background: "var(--color-surface-2)" }}
         >
-          <p className="text-xs mb-1" style={{ color: "var(--color-text-muted)" }}>
+          <p
+            className="text-xs mb-1"
+            style={{ color: "var(--color-text-muted)" }}
+          >
             Current Balance
           </p>
           <p
@@ -187,7 +192,10 @@ export function PotDrawer({ pot, onClose, savingsTransactions }: Props) {
           </p>
           {pot.targetAmount && (
             <>
-              <p className="text-xs mt-1" style={{ color: "var(--color-text-muted)" }}>
+              <p
+                className="text-xs mt-1"
+                style={{ color: "var(--color-text-muted)" }}
+              >
                 Target: {fmt(pot.targetAmount)}
                 {pot.deadline ? ` · Due ${pot.deadline}` : ""}
               </p>
@@ -199,11 +207,16 @@ export function PotDrawer({ pot, onClose, savingsTransactions }: Props) {
                   className="h-full rounded-full"
                   style={{
                     width: `${progress}%`,
-                    background: pot.isCompleted ? "var(--color-income)" : pot.color,
+                    background: pot.isCompleted
+                      ? "var(--color-income)"
+                      : pot.color,
                   }}
                 />
               </div>
-              <p className="text-xs mt-1" style={{ color: "var(--color-text-muted)" }}>
+              <p
+                className="text-xs mt-1"
+                style={{ color: "var(--color-text-muted)" }}
+              >
                 {Math.round(progress ?? 0)}% reached
               </p>
             </>
@@ -367,7 +380,12 @@ export function PotDrawer({ pot, onClose, savingsTransactions }: Props) {
                 className="text-xs font-medium mb-1 block"
                 style={{ color: "var(--color-text-muted)" }}
               >
-                Note <span style={{ color: "var(--color-text-muted)", fontWeight: 400 }}>(optional)</span>
+                Note{" "}
+                <span
+                  style={{ color: "var(--color-text-muted)", fontWeight: 400 }}
+                >
+                  (optional)
+                </span>
               </label>
               <input
                 type="text"
@@ -397,7 +415,10 @@ export function PotDrawer({ pot, onClose, savingsTransactions }: Props) {
 
             {/* Error */}
             {error && (
-              <p className="text-xs font-medium" style={{ color: "var(--color-expense)" }}>
+              <p
+                className="text-xs font-medium"
+                style={{ color: "var(--color-expense)" }}
+              >
                 {error}
               </p>
             )}
@@ -412,7 +433,11 @@ export function PotDrawer({ pot, onClose, savingsTransactions }: Props) {
                 color: "black",
               }}
             >
-              {loading ? "Processing…" : showWarning ? "Confirm anyway" : `Confirm ${actionMeta[action].label}`}
+              {loading
+                ? "Processing…"
+                : showWarning
+                  ? "Confirm anyway"
+                  : `Confirm ${actionMeta[action].label}`}
             </button>
           </div>
         )}
@@ -471,8 +496,12 @@ export function PotDrawer({ pot, onClose, savingsTransactions }: Props) {
                         >
                           {tx.type}
                         </p>
-                        <p className="text-xs" style={{ color: "var(--color-text-muted)" }}>
-                          {tx.note ?? format(new Date(tx.createdAt), "MMM d, yyyy")}
+                        <p
+                          className="text-xs"
+                          style={{ color: "var(--color-text-muted)" }}
+                        >
+                          {tx.note ??
+                            format(new Date(tx.createdAt), "MMM d, yyyy")}
                         </p>
                       </div>
                     </div>
@@ -480,7 +509,9 @@ export function PotDrawer({ pot, onClose, savingsTransactions }: Props) {
                       className="text-sm font-semibold"
                       style={{
                         fontFamily: "var(--font-display)",
-                        color: isIn ? "var(--color-income)" : "var(--color-expense)",
+                        color: isIn
+                          ? "var(--color-income)"
+                          : "var(--color-expense)",
                       }}
                     >
                       {isIn ? "+" : "-"}
@@ -494,21 +525,65 @@ export function PotDrawer({ pot, onClose, savingsTransactions }: Props) {
         )}
 
         {/* Delete pot */}
-        <button
-          onClick={() => {
-            deletePot(pot.id);
-            handleClose();
-          }}
-          className="flex items-center gap-2 mt-5 text-xs font-medium px-3 py-2 rounded-xl transition-opacity hover:opacity-70"
-          style={{
-            background: "var(--color-expense)12",
-            color: "var(--color-expense)",
-            border: "1px solid var(--color-expense)25",
-          }}
-        >
-          <Trash2 size={13} />
-          Delete this pot
-        </button>
+        {!confirmDelete ? (
+          <button
+            onClick={() => setConfirmDelete(true)}
+            className="flex items-center gap-2 mt-5 text-xs font-medium px-3 py-2 rounded-xl transition-opacity hover:opacity-70"
+            style={{
+              background: "var(--color-expense)12",
+              color: "var(--color-expense)",
+              border: "1px solid var(--color-expense)25",
+            }}
+          >
+            <Trash2 size={13} />
+            Delete this pot
+          </button>
+        ) : (
+          <div
+            className="mt-5 rounded-2xl p-4 space-y-3"
+            style={{
+              background: "var(--color-expense)10",
+              border: "1px solid var(--color-expense)30",
+            }}
+          >
+            <p
+              className="text-xs font-semibold"
+              style={{ color: "var(--color-expense)" }}
+            >
+              Delete{" "}
+              <span style={{ fontFamily: "var(--font-display)" }}>
+                {pot.name}
+              </span>
+              {" "} pot ? This action can't be undone.
+            </p>
+            <div className="flex gap-2">
+              <button
+                onClick={() => setConfirmDelete(false)}
+                className="flex-1 py-2 rounded-xl text-xs font-semibold transition-opacity hover:opacity-70"
+                style={{
+                  background: "var(--color-surface-2)",
+                  border: "1px solid var(--color-border)",
+                  color: "var(--color-text-secondary)",
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => {
+                  deletePot(pot.id);
+                  handleClose();
+                }}
+                className="flex-1 py-2 rounded-xl text-xs font-semibold transition-opacity hover:opacity-70"
+                style={{
+                  background: "var(--color-expense)",
+                  color: "white",
+                }}
+              >
+                Yes, delete
+              </button>
+            </div>
+          </div>
+        )}
       </SheetContent>
     </Sheet>
   );

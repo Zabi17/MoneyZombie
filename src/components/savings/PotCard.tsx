@@ -3,6 +3,7 @@ import { SavingsPot } from "../../types";
 import { useCurrency } from "../../hooks/useCurrency";
 import { useAppStore } from "../../store/useAppStore";
 import { format } from "date-fns";
+import { SavingsTransaction } from "../../types";
 
 type Props = {
   pot: SavingsPot;
@@ -16,11 +17,10 @@ const TYPE_LABEL: Record<string, string> = {
   emergency: "Emergency",
 };
 
+
 function needsRecurringReminder(
   pot: SavingsPot,
-  savingsTransactions: ReturnType<
-    typeof useAppStore.getState
-  >["savingsTransactions"],
+  savingsTransactions: SavingsTransaction[],
 ): boolean {
   if (pot.type !== "recurring") return false;
   const currentMonth = format(new Date(), "yyyy-MM");
@@ -46,6 +46,7 @@ export function PotCard({ pot, onClick, onEdit }: Props) {
 
   return (
     <div
+      onClick={onClick}
       className="rounded-2xl p-4 transition-all cursor-pointer"
       style={{
         background: "var(--color-surface)",
@@ -54,19 +55,19 @@ export function PotCard({ pot, onClick, onEdit }: Props) {
           : "1px solid var(--color-border)",
       }}
     >
-      <div className="flex items-center gap-3 cursor-pointer">
+      <div className="flex items-center gap-3">
         {/* Icon */}
-        <button onClick={onClick} className="shrink-0">
+        <div className="shrink-0">
           <div
             className="w-11 h-11 rounded-xl flex items-center justify-center"
             style={{ background: `${pot.color}20` }}
           >
             <IconComp size={20} style={{ color: pot.color }} />
           </div>
-        </button>
+        </div>
 
         {/* Info */}
-        <button onClick={onClick} className="flex-1 min-w-0 text-left cursor-pointer">
+        <div className="flex-1 min-w-0 text-left">
           <div className="flex items-center gap-2 mb-0.5 flex-wrap">
             <p
               className="text-sm font-semibold truncate"
@@ -104,11 +105,11 @@ export function PotCard({ pot, onClick, onEdit }: Props) {
             {pot.deadline ? ` · Due ${pot.deadline}` : ""}
             {pot.recurringAmount ? ` · ${fmt(pot.recurringAmount)}/mo` : ""}
           </p>
-        </button>
+        </div>
 
         {/* Right side: amount + edit */}
         <div className="flex flex-col items-end gap-1.5 shrink-0">
-          <button onClick={onClick} className="text-right">
+          <div className="text-right">
             <p
               className="text-sm font-bold"
               style={{ fontFamily: "var(--font-display)", color: pot.color }}
@@ -116,14 +117,11 @@ export function PotCard({ pot, onClick, onEdit }: Props) {
               {fmt(pot.currentAmount)}
             </p>
             {pot.targetAmount && (
-              <p
-                className="text-xs"
-                style={{ color: "var(--color-text-muted)" }}
-              >
+              <p className="text-xs" style={{ color: "var(--color-text-muted)" }}>
                 of {fmt(pot.targetAmount)}
               </p>
             )}
-          </button>
+          </div>
           <button
             onClick={(e) => {
               e.stopPropagation();
