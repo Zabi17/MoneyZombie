@@ -85,7 +85,13 @@ export function PotDrawer({ pot, onClose, savingsTransactions }: Props) {
     setLoading(true);
     try {
       if (action === "transfer") {
-        await transferBetweenPots(pot.id, transferTo, amt, note || undefined, user.id);
+        await transferBetweenPots(
+          pot.id,
+          transferTo,
+          amt,
+          note || undefined,
+          user.id,
+        );
       } else if (action === "deposit") {
         await depositToPot(pot.id, amt, note || undefined, user.id);
       } else if (action === "withdrawal") {
@@ -550,11 +556,14 @@ export function PotDrawer({ pot, onClose, savingsTransactions }: Props) {
               className="text-xs font-semibold"
               style={{ color: "var(--color-expense)" }}
             >
-              Delete{" "}
-              <span style={{ fontFamily: "var(--font-display)" }}>
+              Are you sure you want to delete the:{" "}
+              <span
+                style={{ fontFamily: "var(--font-display)" }}
+                className="text-green-500"
+              >
                 {pot.name}
-              </span>
-              {" "} pot ? This action can't be undone.
+              </span>{" "}
+              pot ? This action can't be undone.
             </p>
             <div className="flex gap-2">
               <button
