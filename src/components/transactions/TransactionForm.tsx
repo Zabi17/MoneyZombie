@@ -7,6 +7,7 @@ import { useAuth } from "../../hooks/useAuth";
 import { nanoid } from "nanoid";
 import * as Icons from "lucide-react";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "../ui/sheet";
+import { Switch } from "../ui/switch";
 import { Button } from "../ui/button";
 
 const EMPTY = {
@@ -36,6 +37,8 @@ export function TransactionForm({
   const updateTransaction = useAppStore((s) => s.updateTransaction);
   const { symbol } = useCurrency();
   const { user } = useAuth();
+  const [isLend, setIsLend] = useState(false);
+  const [lendTo, setLendTo] = useState("");
 
   const [form, setForm] = useState(EMPTY);
   const [error, setError] = useState("");
@@ -50,8 +53,12 @@ export function TransactionForm({
         date: editing.date,
         note: editing.note ?? "",
       });
+      setIsLend(editing.is_lend ?? false);
+      setLendTo(editing.lend_to ?? "");
     } else {
-      setForm({ ...EMPTY, type: initialType ?? "expense" }); // use initialType here
+      setForm({ ...EMPTY, type: initialType ?? "expense" });
+      setIsLend(false);
+      setLendTo("");
     }
     setError("");
   }, [editing, open, initialType]);
@@ -74,6 +81,9 @@ export function TransactionForm({
       categoryId: form.categoryId,
       date: form.date,
       note: form.note.trim() || undefined,
+      is_lend: isLend,
+      lend_to: isLend ? lendTo.trim() || null : null,
+      lend_status: isLend ? ("pending" as const) : null,
     };
 
     if (editing) {
@@ -264,6 +274,49 @@ export function TransactionForm({
               onChange={(e) => set("note", e.target.value)}
             />
           </div>
+
+          {/* Lend toggle — expense only */}
+          {form.type === "expense" && (
+            <div
+              className="rounded-xl p-3 space-y-3"
+              style={{
+                background: "var(--color-surface-2)",
+                border: "1px solid var(--color-border)",
+              }}
+            >
+              <div className="flex items-center justify-between">
+                <div>
+                  <p
+                    className="text-sm font-semibold"
+                    style={{ color: "var(--color-text-primary)" }}
+                  >
+                    Loan
+                  </p>
+                  <p
+                    className="text-xs"
+                    style={{ color: "var(--color-text-muted)" }}
+                  >
+                    Track this as money lent out
+                  </p>
+                </div>
+                <Switch
+                  checked={isLend}
+                  onCheckedChange={setIsLend}
+                  className="data-[state=checked]:bg-income data-[state=unchecked]:bg-surface-2"
+                />
+              </div>
+
+              {isLend && (
+                <input
+                  className={inputClass}
+                  style={inputStyle}
+                  placeholder="Lent to (e.g. Ahmed)"
+                  value={lendTo}
+                  onChange={(e) => setLendTo(e.target.value)}
+                />
+              )}
+            </div>
+          )}
 
           {/* Error */}
           {error && (

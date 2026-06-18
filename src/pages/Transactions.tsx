@@ -7,6 +7,7 @@ import { TransactionItem } from "../components/transactions/TransactionItem";
 import { DeleteDialog } from "../components/transactions/DeleteDialog";
 import { FilterBar } from "../components/transactions/FilterBar";
 import { format, isThisYear } from "date-fns";
+import { useAuth } from "@/hooks/useAuth";
 
 export default function Transactions() {
   const transactions = useAppStore((s) => s.transactions);
@@ -17,14 +18,27 @@ export default function Transactions() {
   const [editing, setEditing] = useState<Transaction | null>(null);
   const [deleting, setDeleting] = useState<Transaction | null>(null);
   const [search, setSearch] = useState("");
-  const [typeFilter, setTypeFilter] = useState<TransactionType | "all">("all");
   const [catFilter, setCatFilter] = useState("");
+  const [typeFilter, setTypeFilter] = useState<TransactionType | "all" | "lends">("all");
+  const markLendReturned = useAppStore((s) => s.markLendReturned);
+  const { user } = useAuth();
 
   const filtered = useMemo(() => {
     return transactions.filter((tx) => {
       const matchSearch = tx.title.toLowerCase().includes(search.toLowerCase());
-      const matchType = typeFilter === "all" || tx.type === typeFilter;
       const matchCat = !catFilter || tx.categoryId === catFilter;
+
+      let matchType: boolean;
+      if (typeFilter === "lends") {
+        matchType = tx.is_lend === true || tx.type === "lend_return";
+      } else if (typeFilter === "all") {
+        // hide transfer and lend_return from default view
+        matchType =
+          tx.type !== "transfer" && tx.type !== "lend_return" && !tx.is_lend;
+      } else {
+        matchType = tx.type === typeFilter && !tx.is_lend;
+      }
+
       return matchSearch && matchType && matchCat;
     });
   }, [transactions, search, typeFilter, catFilter]);
@@ -152,6 +166,7 @@ export default function Transactions() {
                     tx={tx}
                     onEdit={openEdit}
                     onDelete={setDeleting}
+                    onMarkReturned={(id) => markLendReturned(id, user!.id)}
                   />
                 ))}
               </div>

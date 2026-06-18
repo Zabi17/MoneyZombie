@@ -25,9 +25,16 @@ export function useTransactions(month?: string) {
   return useMemo(() => {
     const filtered = month
       ? transactions.filter(
-          (t) => t.date.startsWith(month) && t.type !== "transfer",
+          (t) =>
+            t.date.startsWith(month) &&
+            t.type !== "transfer" &&
+            t.type !== "lend_return" &&
+            !t.is_lend,
         )
-      : transactions.filter((t) => t.type !== "transfer");
+      : transactions.filter(
+          (t) =>
+            t.type !== "transfer" && t.type !== "lend_return" && !t.is_lend,
+        );
 
     const expenses = filtered.filter((t) => t.type === "expense");
     const income = filtered.filter((t) => t.type === "income");
@@ -72,11 +79,13 @@ export function useRunningBalance(upToMonth: string) {
       .reduce((s, t) => s + t.amount, 0);
 
     const expense = prior
-      .filter((t) => t.type === "expense")
+      .filter((t) => t.type === "expense") // includes is_lend — correct, money did leave
       .reduce((s, t) => s + t.amount, 0);
 
-    // Deposits to savings pots deduct from wallet
-    // Withdrawals from savings pots add back to wallet
+    const lendReturns = prior
+      .filter((t) => t.type === "lend_return")
+      .reduce((s, t) => s + t.amount, 0);
+
     const savingsDeposits = prior
       .filter((t) => t.type === "transfer" && t.title.startsWith("Saved to"))
       .reduce((s, t) => s + t.amount, 0);
@@ -87,6 +96,8 @@ export function useRunningBalance(upToMonth: string) {
       )
       .reduce((s, t) => s + t.amount, 0);
 
-    return income - expense - savingsDeposits + savingsWithdrawals;
+    return (
+      income - expense + lendReturns - savingsDeposits + savingsWithdrawals
+    );
   }, [transactions, upToMonth]);
 }

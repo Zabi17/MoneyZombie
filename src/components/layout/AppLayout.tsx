@@ -33,7 +33,7 @@ export function AppLayout() {
     },
     preventScrollOnSwipe: false,
     trackMouse: false,
-    delta: 50, // min px to register as a swipe
+    delta: 80, // min px to register as a swipe
     swipeDuration: 500,
   });
 

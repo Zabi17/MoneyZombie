@@ -70,6 +70,9 @@ type AppStore = {
     note: string | undefined,
     userId: string,
   ) => Promise<void>;
+
+  //==lends
+  markLendReturned: (lendId: string, userId: string) => Promise<void>;
 };
 
 export const useAppStore = create<AppStore>()((set, get) => ({
@@ -127,6 +130,9 @@ export const useAppStore = create<AppStore>()((set, get) => ({
         date: r.date,
         note: r.note ?? undefined,
         createdAt: r.created_at,
+        is_lend: r.is_lend ?? false,
+        lend_to: r.lend_to ?? null,
+        lend_status: r.lend_status ?? null,
       }));
 
       const categories: Category[] =
@@ -242,6 +248,9 @@ export const useAppStore = create<AppStore>()((set, get) => ({
       note: t.note ?? null,
       created_at: createdAt,
       user_id: userId,
+      is_lend: t.is_lend ?? false,
+      lend_to: t.lend_to ?? null,
+      lend_status: t.lend_status ?? null,
     });
   },
 
@@ -641,6 +650,61 @@ export const useAppStore = create<AppStore>()((set, get) => ({
           is_completed: toPot?.isCompleted,
         })
         .eq("id", toPotId),
+    ]);
+  },
+
+  markLendReturned: async (lendId, userId) => {
+    const { transactions } = get();
+    const lend = transactions.find((t) => t.id === lendId);
+    if (!lend) return;
+
+    const returnId = nanoid();
+    const createdAt = new Date().toISOString();
+    const date = createdAt.slice(0, 10);
+
+    const returnTx: Transaction = {
+      id: returnId,
+      title: `${lend.lend_to ?? "Someone"} returned money`,
+      amount: lend.amount,
+      type: "lend_return",
+      categoryId: lend.categoryId,
+      date,
+      note: `Returned loan: ${lend.title}`,
+      createdAt,
+      is_lend: false,
+      lend_to: lend.lend_to,
+      lend_status: null,
+    };
+
+    // Optimistic update
+    set({
+      transactions: [
+        returnTx,
+        ...transactions.map((t) =>
+          t.id === lendId ? { ...t, lend_status: "returned" as const } : t,
+        ),
+      ],
+    });
+
+    await Promise.all([
+      supabase
+        .from("transactions")
+        .update({ lend_status: "returned" })
+        .eq("id", lendId),
+      supabase.from("transactions").insert({
+        id: returnId,
+        user_id: userId,
+        title: returnTx.title,
+        amount: returnTx.amount,
+        type: "lend_return",
+        category_id: returnTx.categoryId,
+        date,
+        note: returnTx.note ?? null,
+        created_at: createdAt,
+        is_lend: false,
+        lend_to: lend.lend_to ?? null,
+        lend_status: null,
+      }),
     ]);
   },
 }));

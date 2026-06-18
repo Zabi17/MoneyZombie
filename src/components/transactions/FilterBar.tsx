@@ -4,8 +4,8 @@ import { TransactionType } from "../../types";
 type Props = {
   search: string;
   onSearch: (v: string) => void;
-  typeFilter: TransactionType | "all";
-  onTypeFilter: (v: TransactionType | "all") => void;
+  typeFilter: TransactionType | "all" | "lends";
+  onTypeFilter: (v: TransactionType | "all" | "lends") => void;
   categoryFilter: string;
   onCategoryFilter: (v: string) => void;
   categories: { id: string; name: string; type: TransactionType }[];
@@ -27,7 +27,7 @@ export function FilterBar({
   };
 
   const filtered =
-    typeFilter === "all"
+    typeFilter === "all" || typeFilter === "lends"
       ? categories
       : categories.filter((c) => c.type === typeFilter);
 
@@ -80,6 +80,25 @@ export function FilterBar({
             {t}
           </button>
         ))}
+
+        <button
+          onClick={() => {
+            onTypeFilter("lends");
+            onCategoryFilter("");
+          }}
+          className="px-3 py-1.5 rounded-lg text-xs font-semibold shrink-0 transition-all duration-150"
+          style={{
+            background:
+              typeFilter === "lends"
+                ? "var(--color-accent)"
+                : "var(--color-surface)",
+            color:
+              typeFilter === "lends" ? "black" : "var(--color-text-secondary)",
+            border: `1px solid ${typeFilter === "lends" ? "var(--color-accent)" : "var(--color-border)"}`,
+          }}
+        >
+          Lends
+        </button>
 
         <div
           className="w-px shrink-0"

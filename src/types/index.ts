@@ -1,6 +1,6 @@
 export type SavingsPotType = "goal" | "recurring" | "emergency";
 export type SavingsTransactionType = "deposit" | "withdrawal" | "transfer";
-export type TransactionType = "income" | "expense" | "transfer";
+export type TransactionType = "income" | "expense" | "transfer" | "lend_return";
 
 export type SavingsPot = {
   id: string;
@@ -53,6 +53,9 @@ export type Transaction = {
   date: string; // ISO string
   note?: string;
   createdAt: string; // ISO string
+  is_lend?: boolean;
+  lend_to?: string | null;
+  lend_status?: "pending" | "returned" | null;
 };
 
 export type Budget = {
