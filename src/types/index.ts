@@ -1,6 +1,6 @@
 export type SavingsPotType = "goal" | "recurring" | "emergency";
 export type SavingsTransactionType = "deposit" | "withdrawal" | "transfer";
-export type TransactionType = "income" | "expense" | "transfer" | "lend_return";
+export type TransactionType = "income" | "expense" | "transfer";
 
 export type SavingsPot = {
   id: string;
@@ -12,15 +12,9 @@ export type SavingsPot = {
   currentAmount: number;
   isCompleted: boolean;
   createdAt: string;
-
-  // goal only
   targetAmount?: number;
   deadline?: string;
-
-  // recurring only
   recurringAmount?: number;
-
-  // emergency only
   isLocked?: boolean;
   floorAmount?: number;
 };
@@ -30,8 +24,8 @@ export type SavingsTransaction = {
   userId: string;
   type: SavingsTransactionType;
   amount: number;
-  fromPotId: string | null; // null = main wallet
-  toPotId: string | null; // null = main wallet
+  fromPotId: string | null;
+  toPotId: string | null;
   note?: string;
   createdAt: string;
 };
@@ -39,9 +33,9 @@ export type SavingsTransaction = {
 export type Category = {
   id: string;
   name: string;
-  icon: string; // lucide icon name
-  color: string; // hex or tailwind color token
-  type: TransactionType;
+  icon: string;
+  color: string;
+  type: "income" | "expense";
 };
 
 export type Transaction = {
@@ -50,23 +44,34 @@ export type Transaction = {
   amount: number;
   type: TransactionType;
   categoryId: string;
-  date: string; // ISO string
+  date: string;
   note?: string;
-  createdAt: string; // ISO string
-  is_lend?: boolean;
-  lend_to?: string | null;
-  lend_status?: "pending" | "returned" | null;
+  createdAt: string;
+};
+
+export type Lend = {
+  id: string;
+  userId: string;
+  title: string;
+  amount: number;
+  categoryId: string;
+  note?: string;
+  lentOn: string; // date string "yyyy-MM-dd"
+  settledOn?: string | null;
+  walletDebitTxId: string;
+  walletCreditTxId?: string | null;
+  createdAt: string;
 };
 
 export type Budget = {
   id: string;
   categoryId: string;
   amount: number;
-  month: string; // "YYYY-MM"
+  month: string;
 };
 
 export type AppSettings = {
-  currency: string; // "USD", "INR", "EUR" etc
-  name: string; // user's name
+  currency: string;
+  name: string;
   theme: "light" | "dark" | "system";
 };

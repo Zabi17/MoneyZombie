@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useAppStore } from "../../store/useAppStore";
-import { Transaction, TransactionType } from "../../types";
+import { Lend } from "../../types";
 import { useCurrency } from "../../hooks/useCurrency";
 import { format } from "date-fns";
 import { useAuth } from "../../hooks/useAuth";
@@ -10,7 +10,6 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle } from "../ui/sheet";
 const EMPTY = {
   title: "",
   amount: "",
-  type: "expense" as TransactionType,
   categoryId: "",
   date: format(new Date(), "yyyy-MM-dd"),
   note: "",
@@ -19,19 +18,11 @@ const EMPTY = {
 type Props = {
   open: boolean;
   onClose: () => void;
-  editing?: Transaction | null;
-  initialType?: TransactionType;
 };
 
-export function TransactionForm({
-  open,
-  onClose,
-  editing,
-  initialType,
-}: Props) {
+export function LendForm({ open, onClose }: Props) {
   const categories = useAppStore((s) => s.categories);
-  const addTransaction = useAppStore((s) => s.addTransaction);
-  const updateTransaction = useAppStore((s) => s.updateTransaction);
+  const addLend = useAppStore((s) => s.addLend);
   const { symbol } = useCurrency();
   const { user } = useAuth();
 
@@ -39,22 +30,14 @@ export function TransactionForm({
   const [error, setError] = useState("");
 
   useEffect(() => {
-    if (editing) {
-      setForm({
-        title: editing.title,
-        amount: String(editing.amount),
-        type: editing.type,
-        categoryId: editing.categoryId,
-        date: editing.date,
-        note: editing.note ?? "",
-      });
-    } else {
-      setForm({ ...EMPTY, type: initialType ?? "expense" });
+    if (open) {
+      setForm(EMPTY);
+      setError("");
     }
-    setError("");
-  }, [editing, open, initialType]);
+  }, [open]);
 
-  const filtered = categories.filter((c) => c.type === form.type);
+  // lends use expense categories since money is leaving
+  const expenseCategories = categories.filter((c) => c.type === "expense");
   const set = (k: string, v: string) => setForm((f) => ({ ...f, [k]: v }));
 
   const handleSubmit = () => {
@@ -64,20 +47,16 @@ export function TransactionForm({
     if (!form.categoryId) return setError("Select a category");
     if (!form.date) return setError("Pick a date");
 
-    const payload = {
-      title: form.title.trim(),
-      amount: Number(form.amount),
-      type: form.type,
-      categoryId: form.categoryId,
-      date: form.date,
-      note: form.note.trim() || undefined,
-    };
-
-    if (editing) {
-      updateTransaction(editing.id, payload);
-    } else {
-      addTransaction(payload, user!.id);
-    }
+    addLend(
+      {
+        title: form.title.trim(),
+        amount: Number(form.amount),
+        categoryId: form.categoryId,
+        note: form.note.trim() || undefined,
+        lentOn: form.date,
+      },
+      user!.id,
+    );
     onClose();
   };
 
@@ -108,37 +87,9 @@ export function TransactionForm({
               color: "var(--color-text-primary)",
             }}
           >
-            {editing ? "Edit Transaction" : "New Transaction"}
+            New Lend
           </SheetTitle>
         </SheetHeader>
-
-        {/* Type toggle */}
-        <div
-          className="flex gap-2 p-1 rounded-xl mb-5"
-          style={{ background: "var(--color-surface-2)" }}
-        >
-          {(["expense", "income"] as TransactionType[]).map((t) => (
-            <button
-              key={t}
-              onClick={() => {
-                set("type", t);
-                set("categoryId", "");
-              }}
-              className="flex-1 py-2 rounded-lg text-sm font-semibold capitalize transition-all duration-200"
-              style={{
-                background:
-                  form.type === t
-                    ? t === "expense"
-                      ? "var(--color-expense)"
-                      : "var(--color-income)"
-                    : "transparent",
-                color: form.type === t ? "white" : "var(--color-text-muted)",
-              }}
-            >
-              {t}
-            </button>
-          ))}
-        </div>
 
         <div className="space-y-3">
           {/* Title */}
@@ -152,7 +103,7 @@ export function TransactionForm({
             <input
               className={inputClass}
               style={inputStyle}
-              placeholder="e.g. Groceries"
+              placeholder="e.g. Lent Ahmed for lunch"
               value={form.title}
               onChange={(e) => set("title", e.target.value)}
             />
@@ -194,7 +145,7 @@ export function TransactionForm({
               Category
             </label>
             <div className="grid grid-cols-3 gap-2">
-              {filtered.map((cat) => {
+              {expenseCategories.map((cat) => {
                 const IconComp = (Icons as any)[cat.icon] ?? Icons.CircleDot;
                 const selected = form.categoryId === cat.id;
                 return (
@@ -228,7 +179,7 @@ export function TransactionForm({
               className="text-xs font-medium mb-1.5 block"
               style={{ color: "var(--color-text-muted)" }}
             >
-              Date
+              Date lent
             </label>
             <input
               type="date"
@@ -245,12 +196,7 @@ export function TransactionForm({
               className="text-xs font-medium mb-1.5 block"
               style={{ color: "var(--color-text-muted)" }}
             >
-              Note{" "}
-              <span
-                style={{ color: "var(--color-text-muted)", fontWeight: 400 }}
-              >
-                (optional)
-              </span>
+              Note <span style={{ fontWeight: 400 }}>(optional)</span>
             </label>
             <textarea
               className={inputClass}
@@ -283,7 +229,7 @@ export function TransactionForm({
               fontFamily: "var(--font-display)",
             }}
           >
-            {editing ? "Save Changes" : "Add Transaction"}
+            Add Lend
           </button>
         </div>
       </SheetContent>

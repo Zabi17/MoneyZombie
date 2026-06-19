@@ -4,12 +4,11 @@ import { format, subMonths } from "date-fns";
 
 export type ViewScope = "month" | "month+prev" | "all";
 
-/** Returns the list of "yyyy-MM" strings for a given scope + anchor month */
 export function getScopeMonths(
   anchorMonth: string,
   scope: ViewScope,
 ): string[] | undefined {
-  if (scope === "all") return undefined; // undefined = no filter = all time
+  if (scope === "all") return undefined;
   if (scope === "month") return [anchorMonth];
   if (scope === "month+prev") {
     const [y, m] = anchorMonth.split("-").map(Number);
@@ -25,20 +24,12 @@ export function useTransactions(month?: string) {
   return useMemo(() => {
     const filtered = month
       ? transactions.filter(
-          (t) =>
-            t.date.startsWith(month) &&
-            t.type !== "transfer" &&
-            t.type !== "lend_return" &&
-            !t.is_lend,
+          (t) => t.date.startsWith(month) && t.type !== "transfer",
         )
-      : transactions.filter(
-          (t) =>
-            t.type !== "transfer" && t.type !== "lend_return" && !t.is_lend,
-        );
+      : transactions.filter((t) => t.type !== "transfer");
 
     const expenses = filtered.filter((t) => t.type === "expense");
     const income = filtered.filter((t) => t.type === "income");
-
     const totalExpense = expenses.reduce((sum, t) => sum + t.amount, 0);
     const totalIncome = income.reduce((sum, t) => sum + t.amount, 0);
     const balance = totalIncome - totalExpense;
@@ -47,18 +38,19 @@ export function useTransactions(month?: string) {
   }, [transactions, month]);
 }
 
-/** Accepts an array of months (or undefined for all-time) */
 export function useTransactionsMulti(months?: string[]) {
   const transactions = useAppStore((s) => s.transactions);
 
   return useMemo(() => {
-  const filtered = months
-    ? transactions.filter((t) => months.some((m) => t.date.startsWith(m)) && t.type !== "transfer")
-    : transactions.filter((t) => t.type !== "transfer");
+    const filtered = months
+      ? transactions.filter(
+          (t) =>
+            months.some((m) => t.date.startsWith(m)) && t.type !== "transfer",
+        )
+      : transactions.filter((t) => t.type !== "transfer");
 
     const expenses = filtered.filter((t) => t.type === "expense");
     const income = filtered.filter((t) => t.type === "income");
-
     const totalExpense = expenses.reduce((sum, t) => sum + t.amount, 0);
     const totalIncome = income.reduce((sum, t) => sum + t.amount, 0);
     const balance = totalIncome - totalExpense;
@@ -67,7 +59,6 @@ export function useTransactionsMulti(months?: string[]) {
   }, [transactions, months]);
 }
 
-/** Running balance: sum of ALL transactions up to the end of the given month */
 export function useRunningBalance(upToMonth: string) {
   const transactions = useAppStore((s) => s.transactions);
 
@@ -79,11 +70,7 @@ export function useRunningBalance(upToMonth: string) {
       .reduce((s, t) => s + t.amount, 0);
 
     const expense = prior
-      .filter((t) => t.type === "expense") // includes is_lend — correct, money did leave
-      .reduce((s, t) => s + t.amount, 0);
-
-    const lendReturns = prior
-      .filter((t) => t.type === "lend_return")
+      .filter((t) => t.type === "expense")
       .reduce((s, t) => s + t.amount, 0);
 
     const savingsDeposits = prior
@@ -96,8 +83,9 @@ export function useRunningBalance(upToMonth: string) {
       )
       .reduce((s, t) => s + t.amount, 0);
 
-    return (
-      income - expense + lendReturns - savingsDeposits + savingsWithdrawals
-    );
+    // Lend debits/credits are already real transfer-type transactions in the wallet
+    // so balance is naturally correct without special handling
+
+    return income - expense - savingsDeposits + savingsWithdrawals;
   }, [transactions, upToMonth]);
 }
