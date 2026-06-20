@@ -17,7 +17,7 @@ const EMPTY = {
   name: "",
   icon: "CircleDot",
   color: "#6366f1",
-  type: "expense" as TransactionType,
+  type: "expense" as "income" | "expense",
 };
 
 export function CategoryForm({ open, onClose, editing }: Props) {
@@ -124,7 +124,7 @@ export function CategoryForm({ open, onClose, editing }: Props) {
               className="flex gap-2 p-1 rounded-xl"
               style={{ background: "var(--color-surface-2)" }}
             >
-              {(["expense", "income"] as TransactionType[]).map((t) => (
+              {(["expense", "income"] as ("expense" | "income")[]).map((t) => (
                 <button
                   key={t}
                   onClick={() => set("type", t)}
