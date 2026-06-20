@@ -20,23 +20,51 @@ function CustomLabel({
   innerRadius,
   outerRadius,
   percent,
+  name,
 }: any) {
-  if (percent < 0.06) return null;
-  const radius = innerRadius + (outerRadius - innerRadius) * 0.5;
-  const x = cx + radius * Math.cos(-midAngle * RADIAN);
-  const y = cy + radius * Math.sin(-midAngle * RADIAN);
+  if (percent < 0.04) return null;
+
+  const RADIAN = Math.PI / 180;
+  const sin = Math.sin(-midAngle * RADIAN);
+  const cos = Math.cos(-midAngle * RADIAN);
+
+  // Line start — edge of the slice
+  const sx = cx + (outerRadius + 4) * cos;
+  const sy = cy + (outerRadius + 4) * sin;
+
+  // Line elbow
+  const mx = cx + (outerRadius + 20) * cos;
+  const my = cy + (outerRadius + 20) * sin;
+
+  // Line end + text anchor
+  const ex = mx + (cos >= 0 ? 10 : -10);
+  const ey = my;
+  const textAnchor = cos >= 0 ? "start" : "end";
+
   return (
-    <text
-      x={x}
-      y={y}
-      fill="white"
-      textAnchor="middle"
-      dominantBaseline="central"
-      fontSize={11}
-      fontWeight={600}
-    >
-      {`${(percent * 100).toFixed(0)}%`}
-    </text>
+    <g>
+      {/* Leader line */}
+      <path
+        d={`M${sx},${sy}L${mx},${my}L${ex},${ey}`}
+        stroke="var(--color-border)"
+        strokeWidth={1}
+        fill="none"
+      />
+      {/* Dot at elbow */}
+      <circle cx={ex} cy={ey} r={1.5} fill="var(--color-border)" />
+      {/* Label */}
+      <text
+        x={ex + (cos >= 0 ? 4 : -4)}
+        y={ey}
+        textAnchor={textAnchor}
+        dominantBaseline="central"
+        fontSize={10}
+        fontWeight={500}
+        fill="var(--color-text-secondary)"
+      >
+        {name}
+      </text>
+    </g>
   );
 }
 
@@ -118,7 +146,7 @@ export function SpendingPieChart({ months }: Props) {
 
   return (
     <div className="w-full flex flex-col gap-2">
-      <div className="h-65">
+      <div className="h-75">
         <ResponsiveContainer width="100%" height="100%">
           <PieChart>
             <Pie
@@ -126,7 +154,7 @@ export function SpendingPieChart({ months }: Props) {
               cx="50%"
               cy="50%"
               innerRadius={60}
-              outerRadius={95}
+              outerRadius={85}
               paddingAngle={3}
               dataKey="value"
               labelLine={false}
