@@ -28,41 +28,46 @@ function CustomLabel({
   const sin = Math.sin(-midAngle * RADIAN);
   const cos = Math.cos(-midAngle * RADIAN);
 
-  // Line start — edge of the slice
   const sx = cx + (outerRadius + 4) * cos;
   const sy = cy + (outerRadius + 4) * sin;
-
-  // Line elbow
   const mx = cx + (outerRadius + 20) * cos;
   const my = cy + (outerRadius + 20) * sin;
-
-  // Line end + text anchor
   const ex = mx + (cos >= 0 ? 10 : -10);
   const ey = my;
   const textAnchor = cos >= 0 ? "start" : "end";
 
   return (
     <g>
-      {/* Leader line */}
       <path
         d={`M${sx},${sy}L${mx},${my}L${ex},${ey}`}
         stroke="var(--color-border)"
         strokeWidth={1}
         fill="none"
       />
-      {/* Dot at elbow */}
       <circle cx={ex} cy={ey} r={1.5} fill="var(--color-border)" />
-      {/* Label */}
+      {/* Category name */}
       <text
         x={ex + (cos >= 0 ? 4 : -4)}
-        y={ey}
+        y={ey - 6}
         textAnchor={textAnchor}
         dominantBaseline="central"
         fontSize={10}
-        fontWeight={500}
-        fill="var(--color-text-secondary)"
+        fontWeight={600}
+        fill="var(--color-text-primary)"
       >
         {name}
+      </text>
+      {/* Percentage */}
+      <text
+        x={ex + (cos >= 0 ? 4 : -4)}
+        y={ey + 7}
+        textAnchor={textAnchor}
+        dominantBaseline="central"
+        fontSize={9}
+        fontWeight={400}
+        fill="var(--color-text-muted)"
+      >
+        {`${(percent * 100).toFixed(0)}%`}
       </text>
     </g>
   );
