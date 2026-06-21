@@ -69,12 +69,7 @@ export function TransactionItem({ tx, onEdit, onDelete }: Props) {
           )}
           {isLendCredit && (
             <span
-              className="text-[10px] font-bold px-1.5 py-0.5 rounded-md shrink-0"
-              style={{
-                background: "var(--color-income)20",
-                color: "var(--color-income)",
-              }}
-            >
+              className="text-[10px] font-bold px-1.5 py-0.5 rounded-md shrink-0 text-income bg-income/10">
               RETURNED
             </span>
           )}

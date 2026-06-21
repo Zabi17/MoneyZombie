@@ -22,21 +22,18 @@ export default function App() {
   const loadState = useAppStore((s) => s.loadState);
   const name = useAppStore((s) => s.settings.name);
 
-  // When user logs in, load their data. When they log out, clear it.
   useEffect(() => {
     if (user) {
-      loadAll(user.id);
+      if (loadState === "idle") {
+        loadAll(user.id);
+      }
     } else if (!authLoading) {
       reset();
     }
-  }, [user, authLoading]);
+  }, [user, authLoading, loadState]);
 
   // ── Loading states ──────────────────────────────────────────────────────
-  if (
-    authLoading ||
-    (user && loadState === "idle") ||
-    loadState === "loading"
-  ) {
+  if (authLoading || loadState === "loading") {
     return (
       <div
         className="min-h-screen flex items-center justify-center"
@@ -80,10 +77,22 @@ export default function App() {
   }
 
   // ── Not logged in ────────────────────────────────────────────────────────
-  if (!user) return <LoginScreen />;
+  if (!user) {
+    return (
+      <BrowserRouter>
+        <LoginScreen />
+      </BrowserRouter>
+    );
+  }
 
   // ── Logged in but no name yet (new user) ────────────────────────────────
-  if (!name) return <Welcome userId={user.id} />;
+  if (!name) {
+    return (
+      <BrowserRouter>
+        <Welcome userId={user.id} />
+      </BrowserRouter>
+    );
+  }
 
   // ── Main app ─────────────────────────────────────────────────────────────
   return (
