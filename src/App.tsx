@@ -86,13 +86,8 @@ export default function App() {
   }
 
   // ── Logged in but no name yet (new user) ────────────────────────────────
-  if (!name) {
-    return (
-      <BrowserRouter>
-        <Welcome userId={user.id} />
-      </BrowserRouter>
-    );
-  }
+ if (loadState !== "ready") return null;
+ if (!name) return <Welcome userId={user.id} />;
 
   // ── Main app ─────────────────────────────────────────────────────────────
   return (

@@ -2,6 +2,7 @@ import { useState } from "react";
 import { ArrowRight } from "lucide-react";
 import { useAppStore } from "../../store/useAppStore";
 import { CURRENCIES } from "../../constants/defaults";
+import { supabase } from "@/lib/supabase";
 
 type Props = { userId: string };
 
@@ -11,8 +12,19 @@ export function Welcome({ userId }: Props) {
   const [currency, setCurrency] = useState("INR");
   const [step, setStep] = useState<1 | 2>(1);
 
-  const handleFinish = () => {
-    updateSettings({ name: name.trim() || "Friend", currency }, userId);
+  const handleFinish = async () => {
+    const newName = name.trim() || "Friend";
+    // updateSettings does an UPDATE which fails if row was deleted.
+    await supabase
+      .from("settings")
+      .upsert(
+        { user_id: userId, name: newName, currency, theme: "system" },
+        { onConflict: "user_id" },
+      );
+
+    useAppStore.setState((s) => ({
+      settings: { ...s.settings, name: newName, currency },
+    }));
   };
 
   const inputStyle = {

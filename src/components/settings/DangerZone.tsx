@@ -34,24 +34,32 @@ export function DangerZone() {
     if (!user) return;
     setLoading(true);
 
-    // Wipe all user data from DB
     await Promise.all([
       supabase.from("transactions").delete().eq("user_id", user.id),
       supabase.from("budgets").delete().eq("user_id", user.id),
       supabase.from("categories").delete().eq("user_id", user.id),
-      supabase.from("settings").delete().eq("user_id", user.id),
+      supabase.from("savings_pots").delete().eq("user_id", user.id),
+      supabase.from("savings_transactions").delete().eq("user_id", user.id),
+      supabase.from("lends").delete().eq("user_id", user.id),
+      // UPDATE instead of DELETE — keeps the row, just wipes name
+      supabase
+        .from("settings")
+        .update({ name: "", currency: "INR", theme: "system" })
+        .eq("user_id", user.id),
     ]);
 
-    // Reset local state
     useAppStore.setState({
       transactions: [],
       budgets: [],
       categories: DEFAULT_CATEGORIES,
+      savingsPots: [],
+      savingsTransactions: [],
+      lends: [],
       settings: DEFAULT_SETTINGS,
     });
 
     setLoading(false);
-    window.location.reload(); // loadAll will re-seed defaults on next mount
+    window.location.reload();
   };
 
   const btnBase =

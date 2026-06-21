@@ -195,12 +195,15 @@ export const useAppStore = create<AppStore>()((set, get) => ({
         : DEFAULT_SETTINGS;
 
       if (!setRes.data) {
-        await supabase.from("settings").insert({
-          user_id: userId,
-          currency: DEFAULT_SETTINGS.currency,
-          name: DEFAULT_SETTINGS.name,
-          theme: DEFAULT_SETTINGS.theme,
-        });
+        await supabase.from("settings").upsert(
+          {
+            user_id: userId,
+            currency: DEFAULT_SETTINGS.currency,
+            name: DEFAULT_SETTINGS.name,
+            theme: DEFAULT_SETTINGS.theme,
+          },
+          { onConflict: "user_id" },
+        );
       }
 
       const savingsPots: SavingsPot[] = (potsRes.data ?? []).map((r) => ({
