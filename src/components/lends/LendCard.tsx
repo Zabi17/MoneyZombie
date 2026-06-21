@@ -3,16 +3,17 @@ import { useAppStore } from "../../store/useAppStore";
 import { useCurrency } from "../../hooks/useCurrency";
 import { differenceInDays, format } from "date-fns";
 import * as Icons from "lucide-react";
-import { Trash2, RotateCcw } from "lucide-react";
+import { Trash2, RotateCcw, Pencil } from "lucide-react";
 
 type Props = {
   lend: Lend;
   onSettle: (id: string) => void;
   onUndo: (id: string) => void;
+  onEdit: (id: string) => void;
   onDelete: (id: string) => void;
 };
 
-export function LendCard({ lend, onSettle, onUndo, onDelete }: Props) {
+export function LendCard({ lend, onSettle, onUndo, onEdit, onDelete }: Props) {
   const categories = useAppStore((s) => s.categories);
   const { format: fmt } = useCurrency();
 
@@ -105,6 +106,13 @@ export function LendCard({ lend, onSettle, onUndo, onDelete }: Props) {
                 <RotateCcw size={11} /> Undo
               </button>
               <button
+                onClick={() => onEdit(lend.id)}
+                className="flex items-center gap-1 text-xs font-medium transition-opacity hover:opacity-70"
+                style={{ color: "var(--color-text-muted)" }}
+              >
+                <Pencil size={11} /> Edit
+              </button>
+              <button
                 onClick={() => onDelete(lend.id)}
                 className="w-6 h-6 rounded-lg flex items-center justify-center transition-opacity hover:opacity-70"
                 style={{
@@ -136,6 +144,13 @@ export function LendCard({ lend, onSettle, onUndo, onDelete }: Props) {
                 }}
               >
                 Mark settled ↩
+              </button>
+              <button
+                onClick={() => onEdit(lend.id)}
+                className="flex items-center gap-1 text-xs font-medium transition-opacity hover:opacity-70"
+                style={{ color: "var(--color-text-muted)" }}
+              >
+                <Pencil size={11} /> Edit
               </button>
               <button
                 onClick={() => onDelete(lend.id)}

@@ -83,9 +83,21 @@ export function useRunningBalance(upToMonth: string) {
       )
       .reduce((s, t) => s + t.amount, 0);
 
-    // Lend debits/credits are already real transfer-type transactions in the wallet
-    // so balance is naturally correct without special handling
+    const lendDebits = prior
+      .filter((t) => t.type === "transfer" && t.title.startsWith("Lent ·"))
+      .reduce((s, t) => s + t.amount, 0);
 
-    return income - expense - savingsDeposits + savingsWithdrawals;
+    const lendReturns = prior
+      .filter((t) => t.type === "transfer" && t.title.startsWith("Returned ·"))
+      .reduce((s, t) => s + t.amount, 0);
+
+    return (
+      income -
+      expense -
+      savingsDeposits +
+      savingsWithdrawals -
+      lendDebits +
+      lendReturns
+    );
   }, [transactions, upToMonth]);
 }

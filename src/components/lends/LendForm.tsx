@@ -18,11 +18,13 @@ const EMPTY = {
 type Props = {
   open: boolean;
   onClose: () => void;
+  editing?: Lend | null;
 };
 
-export function LendForm({ open, onClose }: Props) {
+export function LendForm({ open, onClose, editing }: Props) {
   const categories = useAppStore((s) => s.categories);
   const addLend = useAppStore((s) => s.addLend);
+  const updateLend = useAppStore((s) => s.updateLend);
   const { symbol } = useCurrency();
   const { user } = useAuth();
 
@@ -31,12 +33,21 @@ export function LendForm({ open, onClose }: Props) {
 
   useEffect(() => {
     if (open) {
-      setForm(EMPTY);
+      if (editing) {
+        setForm({
+          title: editing.title,
+          amount: String(editing.amount),
+          categoryId: editing.categoryId,
+          date: editing.lentOn,
+          note: editing.note ?? "",
+        });
+      } else {
+        setForm(EMPTY);
+      }
       setError("");
     }
-  }, [open]);
+  }, [open, editing]);
 
-  // lends use expense categories since money is leaving
   const expenseCategories = categories.filter((c) => c.type === "expense");
   const set = (k: string, v: string) => setForm((f) => ({ ...f, [k]: v }));
 
@@ -47,16 +58,26 @@ export function LendForm({ open, onClose }: Props) {
     if (!form.categoryId) return setError("Select a category");
     if (!form.date) return setError("Pick a date");
 
-    addLend(
-      {
+    if (editing) {
+      updateLend(editing.id, {
         title: form.title.trim(),
         amount: Number(form.amount),
         categoryId: form.categoryId,
         note: form.note.trim() || undefined,
         lentOn: form.date,
-      },
-      user!.id,
-    );
+      });
+    } else {
+      addLend(
+        {
+          title: form.title.trim(),
+          amount: Number(form.amount),
+          categoryId: form.categoryId,
+          note: form.note.trim() || undefined,
+          lentOn: form.date,
+        },
+        user!.id,
+      );
+    }
     onClose();
   };
 
@@ -87,12 +108,11 @@ export function LendForm({ open, onClose }: Props) {
               color: "var(--color-text-primary)",
             }}
           >
-            New Lend
+            {editing ? "Edit Lend" : "New Lend"}
           </SheetTitle>
         </SheetHeader>
 
         <div className="space-y-3">
-          {/* Title */}
           <div>
             <label
               className="text-xs font-medium mb-1.5 block"
@@ -109,7 +129,6 @@ export function LendForm({ open, onClose }: Props) {
             />
           </div>
 
-          {/* Amount */}
           <div>
             <label
               className="text-xs font-medium mb-1.5 block"
@@ -136,7 +155,6 @@ export function LendForm({ open, onClose }: Props) {
             </div>
           </div>
 
-          {/* Category */}
           <div>
             <label
               className="text-xs font-medium mb-1.5 block"
@@ -173,7 +191,6 @@ export function LendForm({ open, onClose }: Props) {
             </div>
           </div>
 
-          {/* Date */}
           <div>
             <label
               className="text-xs font-medium mb-1.5 block"
@@ -190,7 +207,6 @@ export function LendForm({ open, onClose }: Props) {
             />
           </div>
 
-          {/* Note */}
           <div>
             <label
               className="text-xs font-medium mb-1.5 block"
@@ -229,7 +245,7 @@ export function LendForm({ open, onClose }: Props) {
               fontFamily: "var(--font-display)",
             }}
           >
-            Add Lend
+            {editing ? "Save Changes" : "Add Lend"}
           </button>
         </div>
       </SheetContent>

@@ -84,6 +84,7 @@ type AppStore = {
     },
     userId: string,
   ) => Promise<void>;
+  updateLend: (id: string,data: Partial<Pick<Lend, "title" | "amount" | "categoryId" | "note" | "lentOn">>,) => Promise<void>;
   settleLend: (lendId: string) => Promise<void>;
   undoSettleLend: (lendId: string) => Promise<void>;
   deleteLend: (lendId: string) => Promise<void>;
@@ -511,18 +512,16 @@ export const useAppStore = create<AppStore>()((set, get) => ({
 
     const updatedPot = get().savingsPots.find((p) => p.id === potId);
     await Promise.all([
-      supabase
-        .from("savings_transactions")
-        .insert({
-          id,
-          user_id: userId,
-          type: "deposit",
-          amount,
-          from_pot_id: null,
-          to_pot_id: potId,
-          note: note ?? null,
-          created_at: createdAt,
-        }),
+      supabase.from("savings_transactions").insert({
+        id,
+        user_id: userId,
+        type: "deposit",
+        amount,
+        from_pot_id: null,
+        to_pot_id: potId,
+        note: note ?? null,
+        created_at: createdAt,
+      }),
       supabase
         .from("savings_pots")
         .update({
@@ -530,19 +529,17 @@ export const useAppStore = create<AppStore>()((set, get) => ({
           is_completed: updatedPot?.isCompleted,
         })
         .eq("id", potId),
-      supabase
-        .from("transactions")
-        .insert({
-          id: txId,
-          user_id: userId,
-          title: `Saved to ${pot?.name ?? "pot"}`,
-          amount,
-          type: "transfer",
-          category_id: "savings",
-          date,
-          note: note ?? null,
-          created_at: createdAt,
-        }),
+      supabase.from("transactions").insert({
+        id: txId,
+        user_id: userId,
+        title: `Saved to ${pot?.name ?? "pot"}`,
+        amount,
+        type: "transfer",
+        category_id: "savings",
+        date,
+        note: note ?? null,
+        created_at: createdAt,
+      }),
     ]);
   },
 
@@ -587,35 +584,31 @@ export const useAppStore = create<AppStore>()((set, get) => ({
 
     const updatedPot = get().savingsPots.find((p) => p.id === potId);
     await Promise.all([
-      supabase
-        .from("savings_transactions")
-        .insert({
-          id,
-          user_id: userId,
-          type: "withdrawal",
-          amount,
-          from_pot_id: potId,
-          to_pot_id: null,
-          note: note ?? null,
-          created_at: createdAt,
-        }),
+      supabase.from("savings_transactions").insert({
+        id,
+        user_id: userId,
+        type: "withdrawal",
+        amount,
+        from_pot_id: potId,
+        to_pot_id: null,
+        note: note ?? null,
+        created_at: createdAt,
+      }),
       supabase
         .from("savings_pots")
         .update({ current_amount: updatedPot?.currentAmount })
         .eq("id", potId),
-      supabase
-        .from("transactions")
-        .insert({
-          id: txId,
-          user_id: userId,
-          title: `Withdrawn from ${pot?.name ?? "pot"}`,
-          amount,
-          type: "transfer",
-          category_id: "savings",
-          date,
-          note: note ?? null,
-          created_at: createdAt,
-        }),
+      supabase.from("transactions").insert({
+        id: txId,
+        user_id: userId,
+        title: `Withdrawn from ${pot?.name ?? "pot"}`,
+        amount,
+        type: "transfer",
+        category_id: "savings",
+        date,
+        note: note ?? null,
+        created_at: createdAt,
+      }),
     ]);
   },
 
@@ -657,18 +650,16 @@ export const useAppStore = create<AppStore>()((set, get) => ({
     const fromPot = get().savingsPots.find((p) => p.id === fromPotId);
     const toPot = get().savingsPots.find((p) => p.id === toPotId);
     await Promise.all([
-      supabase
-        .from("savings_transactions")
-        .insert({
-          id,
-          user_id: userId,
-          type: "transfer",
-          amount,
-          from_pot_id: fromPotId,
-          to_pot_id: toPotId,
-          note: note ?? null,
-          created_at: createdAt,
-        }),
+      supabase.from("savings_transactions").insert({
+        id,
+        user_id: userId,
+        type: "transfer",
+        amount,
+        from_pot_id: fromPotId,
+        to_pot_id: toPotId,
+        note: note ?? null,
+        created_at: createdAt,
+      }),
       supabase
         .from("savings_pots")
         .update({ current_amount: fromPot?.currentAmount })
@@ -745,6 +736,79 @@ export const useAppStore = create<AppStore>()((set, get) => ({
         wallet_credit_tx_id: null,
         created_at: createdAt,
       }),
+    ]);
+  },
+
+  updateLend: async (id, data) => {
+    const lend = get().lends.find((l) => l.id === id);
+    if (!lend) return;
+
+    const amountChanged =
+      data.amount !== undefined && data.amount !== lend.amount;
+
+    // Optimistic update on lend record
+    set((s) => ({
+      lends: s.lends.map((l) => (l.id === id ? { ...l, ...data } : l)),
+      transactions: s.transactions.map((t) => {
+        // Update the debit tx title/amount/date if lent details changed
+        if (t.id === lend.walletDebitTxId) {
+          return {
+            ...t,
+            title: `Lent · ${data.title ?? lend.title}`,
+            amount: data.amount ?? lend.amount,
+            date: data.lentOn ?? lend.lentOn,
+            categoryId: data.categoryId ?? lend.categoryId,
+          };
+        }
+        // Update the credit tx title if exists
+        if (t.id === lend.walletCreditTxId) {
+          return {
+            ...t,
+            title: `Returned · ${data.title ?? lend.title}`,
+            amount: data.amount ?? lend.amount,
+            categoryId: data.categoryId ?? lend.categoryId,
+          };
+        }
+        return t;
+      }),
+    }));
+
+    await Promise.all([
+      supabase
+        .from("lends")
+        .update({
+          ...(data.title !== undefined && { title: data.title }),
+          ...(data.amount !== undefined && { amount: data.amount }),
+          ...(data.categoryId !== undefined && {
+            category_id: data.categoryId,
+          }),
+          ...(data.note !== undefined && { note: data.note }),
+          ...(data.lentOn !== undefined && { lent_on: data.lentOn }),
+        })
+        .eq("id", id),
+
+      supabase
+        .from("transactions")
+        .update({
+          title: `Lent · ${data.title ?? lend.title}`,
+          amount: data.amount ?? lend.amount,
+          date: data.lentOn ?? lend.lentOn,
+          category_id: data.categoryId ?? lend.categoryId,
+        })
+        .eq("id", lend.walletDebitTxId),
+
+      ...(lend.walletCreditTxId
+        ? [
+            supabase
+              .from("transactions")
+              .update({
+                title: `Returned · ${data.title ?? lend.title}`,
+                amount: data.amount ?? lend.amount,
+                category_id: data.categoryId ?? lend.categoryId,
+              })
+              .eq("id", lend.walletCreditTxId),
+          ]
+        : []),
     ]);
   },
 

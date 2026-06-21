@@ -21,6 +21,7 @@ type Props = {
   onClose: () => void;
   editing?: Transaction | null;
   initialType?: TransactionType;
+  onSwitchToLend?: () => void;
 };
 
 export function TransactionForm({
@@ -28,6 +29,7 @@ export function TransactionForm({
   onClose,
   editing,
   initialType,
+  onSwitchToLend,
 }: Props) {
   const categories = useAppStore((s) => s.categories);
   const addTransaction = useAppStore((s) => s.addTransaction);
@@ -138,6 +140,18 @@ export function TransactionForm({
               {t}
             </button>
           ))}
+          {!editing && onSwitchToLend && (
+            <button
+              onClick={onSwitchToLend}
+              className="flex-1 py-2 rounded-lg text-sm font-semibold transition-all duration-200"
+              style={{
+                background: "transparent",
+                color: "var(--color-text-muted)",
+              }}
+            >
+              Lend
+            </button>
+          )}
         </div>
 
         <div className="space-y-3">

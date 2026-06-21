@@ -8,6 +8,7 @@ import { RecentTransactions } from "../components/dashboard/RecentTransactions";
 import { MonthSelector } from "../components/dashboard/MonthSelector";
 import { ScopeSelector } from "../components/dashboard/ScopeSelector";
 import { TransactionForm } from "../components/transactions/TransactionForm";
+import { LendForm } from "../components/lends/LendForm";
 import {
   useTransactionsMulti,
   useRunningBalance,
@@ -21,6 +22,7 @@ import { TransactionType } from "../types";
 export default function Dashboard() {
   const [activeDate, setActiveDate] = useState(new Date());
   const [scope, setScope] = useState<ViewScope>("month");
+  const [lendFormOpen, setLendFormOpen] = useState(false);
   const currentMonth = format(activeDate, "yyyy-MM");
 
   const scopeMonths = useMemo(
@@ -203,6 +205,16 @@ export default function Dashboard() {
         onClose={() => setFormOpen(false)}
         editing={null}
         initialType={formType}
+        onSwitchToLend={() => {
+          setFormOpen(false);
+          setLendFormOpen(true);
+        }}
+      />
+
+      <LendForm
+        open={lendFormOpen}
+        onClose={() => setLendFormOpen(false)}
+        editing={null}
       />
     </div>
   );

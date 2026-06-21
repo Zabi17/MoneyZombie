@@ -19,14 +19,24 @@ export function TransactionItem({ tx, onEdit, onDelete }: Props) {
     ? ((Icons as any)[cat.icon] ?? Icons.CircleDot)
     : Icons.CircleDot;
 
+  const isLendDebit = tx.title.startsWith("Lent ·");
+  const isLendCredit = tx.title.startsWith("Returned ·");
+  const isLendRelated = isLendDebit || isLendCredit;
+
+  const amberColor = "#f59e0b";
+
   return (
     <div
       className="flex items-center gap-3 px-4 py-3 rounded-2xl group"
       style={{
         background: "var(--color-surface)",
         border: "1px solid var(--color-border)",
+        borderLeft: isLendRelated
+          ? `3px solid ${isLendCredit ? "var(--color-income)" : amberColor}`
+          : "1px solid var(--color-border)",
       }}
     >
+      {/* Icon */}
       <div
         className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0"
         style={{
@@ -37,13 +47,38 @@ export function TransactionItem({ tx, onEdit, onDelete }: Props) {
         <IconComp size={18} />
       </div>
 
+      {/* Info */}
       <div className="flex-1 min-w-0">
-        <p
-          className="text-sm font-semibold truncate"
-          style={{ color: "var(--color-text-primary)" }}
-        >
-          {tx.title}
-        </p>
+        <div className="flex items-center gap-2 flex-wrap">
+          <p
+            className="text-sm font-semibold truncate"
+            style={{ color: "var(--color-text-primary)" }}
+          >
+            {/* Strip the prefix for cleaner display */}
+            {isLendRelated
+              ? tx.title.split(" · ").slice(1).join(" · ")
+              : tx.title}
+          </p>
+          {isLendDebit && (
+            <span
+              className="text-[10px] font-bold px-1.5 py-0.5 rounded-md shrink-0"
+              style={{ background: `${amberColor}20`, color: amberColor }}
+            >
+              LENT
+            </span>
+          )}
+          {isLendCredit && (
+            <span
+              className="text-[10px] font-bold px-1.5 py-0.5 rounded-md shrink-0"
+              style={{
+                background: "var(--color-income)20",
+                color: "var(--color-income)",
+              }}
+            >
+              RETURNED
+            </span>
+          )}
+        </div>
         <p
           className="text-xs truncate"
           style={{ color: "var(--color-text-muted)" }}
@@ -53,19 +88,30 @@ export function TransactionItem({ tx, onEdit, onDelete }: Props) {
         </p>
       </div>
 
+      {/* Amount */}
       <span
         className="text-sm font-bold shrink-0"
         style={{
-          color:
-            tx.type === "expense"
-              ? "var(--color-expense)"
-              : "var(--color-income)",
+          color: isLendCredit
+            ? "var(--color-income)"
+            : isLendDebit
+              ? amberColor
+              : tx.type === "expense"
+                ? "var(--color-expense)"
+                : "var(--color-income)",
         }}
       >
-        {tx.type === "expense" ? "-" : "+"}
+        {isLendDebit
+          ? "-"
+          : isLendCredit
+            ? "+"
+            : tx.type === "expense"
+              ? "-"
+              : "+"}
         {fmt(tx.amount)}
       </span>
 
+      {/* Actions */}
       <div className="flex gap-1 shrink-0 lg:opacity-0 lg:group-hover:opacity-100 lg:transition-opacity lg:duration-150">
         <button
           onClick={() => onEdit(tx)}
