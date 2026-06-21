@@ -68,32 +68,49 @@ export function DangerZone() {
   return (
     <>
       <div className="space-y-2">
-        <button
-          onClick={() => setConfirmClear(true)}
-          disabled={loading}
-          className={btnBase}
-          style={{
-            background: "var(--color-expense)15",
-            color: "var(--color-expense)",
-            border: "1px solid var(--color-expense)30",
-          }}
-        >
-          <Trash2 size={15} />
-          Clear all transactions
-        </button>
-        <button
-          onClick={() => setConfirmReset(true)}
-          disabled={loading}
-          className={btnBase}
-          style={{
-            background: "var(--color-expense)25",
-            color: "var(--color-expense)",
-            border: "1px solid var(--color-expense)50",
-          }}
-        >
-          <RotateCcw size={15} />
-          Reset everything
-        </button>
+        <div>
+          <button
+            onClick={() => setConfirmClear(true)}
+            disabled={loading}
+            className={btnBase}
+            style={{
+              background: "var(--color-expense)15",
+              color: "var(--color-expense)",
+              border: "1px solid var(--color-expense)30",
+            }}
+          >
+            <Trash2 size={15} />
+            Clear all transactions
+          </button>
+          <p
+            className="text-xs mt-1 px-1"
+            style={{ color: "var(--color-text-muted)" }}
+          >
+            Deletes only the Transactions
+          </p>
+        </div>
+
+        <div>
+          <button
+            onClick={() => setConfirmReset(true)}
+            disabled={loading}
+            className={btnBase}
+            style={{
+              background: "var(--color-expense)25",
+              color: "var(--color-expense)",
+              border: "1px solid var(--color-expense)50",
+            }}
+          >
+            <RotateCcw size={15} />
+            Reset everything
+          </button>
+          <p
+            className="flex text-xs mt-1 px-1 "
+            style={{ color: "var(--color-text-muted)" }}
+          >
+            <AlertTriangle size={15} /> Wipes all data including budgets, categories, savings & lends.
+          </p>
+        </div>
       </div>
 
       {/* Clear transactions dialog */}
@@ -116,8 +133,9 @@ export function DangerZone() {
             <AlertDialogDescription
               style={{ color: "var(--color-text-muted)" }}
             >
-              This will permanently delete all your transactions. Budgets and
-              categories will remain intact.
+              This will permanently delete all your{" "}
+              <span className="text-expense">transactions</span>. While your
+              Budgets and categories will remain intact.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
