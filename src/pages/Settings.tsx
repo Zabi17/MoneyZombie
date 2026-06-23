@@ -129,7 +129,7 @@ export default function Settings() {
           rel="noopener noreferrer"
           className="underline hover:text-accent"
         >
-          Zabi Ahmed
+          LinkedIn: Zabi Ahmed
         </a>
       </p>
     </div>
