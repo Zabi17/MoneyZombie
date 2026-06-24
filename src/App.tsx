@@ -109,7 +109,7 @@ export default function App() {
       </BrowserRouter>
 
       <Toaster
-        position="bottom-center"
+        position="top-center"
         expand={false}
         toastOptions={{
           duration: 2500,

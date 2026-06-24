@@ -1013,7 +1013,7 @@ export const useAppStore = create<AppStore>()((set, get) => ({
           })
           .eq("id", lendId),
       ]);
-      toast.success("Undo lend sucessfull");
+      toast.success("Marked as un-settled");
     } catch (error) {
       toast.error("Failed to undo lend");
     }
