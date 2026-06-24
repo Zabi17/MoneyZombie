@@ -1,7 +1,5 @@
 import { Outlet, useLocation, useNavigate } from "react-router-dom";
 import { useSwipeable } from "react-swipeable";
-import { AnimatePresence, motion } from "framer-motion";
-import { useRef } from "react";
 import { Sidebar } from "./Sidebar";
 import { BottomNav } from "./BottomNav";
 import { TopBar } from "./TopBar";
@@ -19,44 +17,25 @@ const PAGE_ORDER = [
 export function AppLayout() {
   const { pathname } = useLocation();
   const navigate = useNavigate();
-  const directionRef = useRef<1 | -1>(1);
-  const isDesktop = window.matchMedia("(min-width: 1024px)").matches;
 
   const currentIndex = PAGE_ORDER.indexOf(pathname);
 
   const handlers = useSwipeable({
     onSwipedLeft: () => {
       if (currentIndex < PAGE_ORDER.length - 1) {
-        directionRef.current = 1;
         navigate(PAGE_ORDER[currentIndex + 1]);
       }
     },
     onSwipedRight: () => {
       if (currentIndex > 0) {
-        directionRef.current = -1;
         navigate(PAGE_ORDER[currentIndex - 1]);
       }
     },
     preventScrollOnSwipe: false,
     trackMouse: false,
-    delta: 80,
+    delta: 80, // min px to register as a swipe
     swipeDuration: 500,
   });
-
-  const variants = {
-    enter: (dir: number) => ({
-      x: isDesktop ? 0 : dir * 80,
-      opacity: isDesktop ? 0 : 1,
-    }),
-    center: {
-      x: 0,
-      opacity: 1,
-    },
-    exit: (dir: number) => ({
-      x: isDesktop ? 0 : dir * -80,
-      opacity: isDesktop ? 0 : 1,
-    }),
-  };
 
   return (
     <div
@@ -70,24 +49,11 @@ export function AppLayout() {
         <TopBar />
         <main
           {...handlers}
-          className="flex-1 px-4 py-4 lg:px-8 lg:py-8 pb-24 lg:pb-8 overflow-hidden"
+          className="flex-1 px-4 py-4 lg:px-8 lg:py-8 pb-24 lg:pb-8"
         >
-          <AnimatePresence mode="wait" custom={directionRef.current}>
-            <motion.div
-              key={pathname}
-              custom={directionRef.current}
-              variants={variants}
-              initial="enter"
-              animate="center"
-              exit="exit"
-              transition={{
-                x: { type: "spring", stiffness: 350, damping: 35 },
-                opacity: { duration: 0.12 },
-              }}
-            >
-              <Outlet />
-            </motion.div>
-          </AnimatePresence>
+          <div key={pathname} className="page-enter">
+            <Outlet />
+          </div>
         </main>
       </div>
 
