@@ -15,7 +15,8 @@ type Props = {
 export function BudgetForm({ open, onClose, month, editing }: Props) {
   const categories = useAppStore((s) => s.categories);
   const budgets = useAppStore((s) => s.budgets);
-  const setBudget = useAppStore((s) => s.setBudget);
+  const addBudget = useAppStore((s) => s.addBudget);
+  const updateBudget = useAppStore((s) => s.updateBudget);
   const { symbol } = useCurrency();
   const { user } = useAuth();
 
@@ -50,7 +51,11 @@ export function BudgetForm({ open, onClose, month, editing }: Props) {
     if (!amount || isNaN(Number(amount)) || Number(amount) <= 0)
       return setError("Enter a valid budget amount");
 
-    setBudget({ categoryId, amount: Number(amount), month }, user!.id);
+    if (editing) {
+      updateBudget(editing.id, Number(amount));
+    } else {
+      addBudget({ categoryId, amount: Number(amount), month }, user!.id);
+    }
     onClose();
   };
 

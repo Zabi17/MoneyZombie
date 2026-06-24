@@ -1,5 +1,6 @@
 import { useEffect } from "react";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { Toaster } from "sonner";
 import Loader from "./components/ui/Loader";
 import { AppLayout } from "./components/layout/AppLayout";
 import { LoginScreen } from "./components/auth/LoginScreen";
@@ -91,19 +92,46 @@ export default function App() {
 
   // ── Main app ─────────────────────────────────────────────────────────────
   return (
-    <BrowserRouter>
-      <Routes>
-        <Route element={<AppLayout />}>
-          <Route index element={<Dashboard />} />
-          <Route path="transactions" element={<Transactions />} />
-          <Route path="budgets" element={<Budgets />} />
-          <Route path="savings" element={<Savings />} />
-          <Route path="categories" element={<Categories />} />
-          <Route path="reports" element={<Reports />} />
-          <Route path="settings" element={<Settings />} />
-        </Route>
-        <Route path="*" element={<NotFound />} />
-      </Routes>
-    </BrowserRouter>
+    <>
+      <BrowserRouter>
+        <Routes>
+          <Route element={<AppLayout />}>
+            <Route index element={<Dashboard />} />
+            <Route path="transactions" element={<Transactions />} />
+            <Route path="budgets" element={<Budgets />} />
+            <Route path="savings" element={<Savings />} />
+            <Route path="categories" element={<Categories />} />
+            <Route path="reports" element={<Reports />} />
+            <Route path="settings" element={<Settings />} />
+          </Route>
+          <Route path="*" element={<NotFound />} />
+        </Routes>
+      </BrowserRouter>
+
+      <Toaster
+        position="bottom-center"
+        expand={false}
+        toastOptions={{
+          duration: 2500,
+          style: {
+            fontSize: "13px",
+            padding: "10px 16px",
+            minHeight: "unset",
+            borderRadius: "12px",
+            fontFamily: "var(--font-sans)",
+            background: "oklch(0.16 0.01 240)",
+            border: "1px solid oklch(0.26 0.01 240)",
+            color: "oklch(0.95 0.005 240)",
+            boxShadow:
+              "0 0 0 1px oklch(0.26 0.01 240), 0 8px 24px oklch(0 0 0 / 0.4)",
+          },
+          classNames: {
+            success: "toast-success",
+            error: "toast-error",
+            warning: "toast-warning",
+          },
+        }}
+      />
+    </>
   );
 }

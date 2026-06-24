@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import { nanoid } from "nanoid";
+import { toast } from "sonner";
 import {
   Transaction,
   Category,
@@ -38,7 +39,8 @@ type AppStore = {
   updateCategory: (id: string, c: Partial<Category>) => Promise<void>;
   deleteCategory: (id: string) => Promise<void>;
 
-  setBudget: (b: Omit<Budget, "id">, userId: string) => Promise<void>;
+  addBudget: (b: Omit<Budget, "id">, userId: string) => Promise<void>;
+  updateBudget: (id: string, amount: number) => Promise<void>;
   deleteBudget: (id: string) => Promise<void>;
 
   updateSettings: (s: Partial<AppSettings>, userId: string) => Promise<void>;
@@ -84,7 +86,12 @@ type AppStore = {
     },
     userId: string,
   ) => Promise<void>;
-  updateLend: (id: string,data: Partial<Pick<Lend, "title" | "amount" | "categoryId" | "note" | "lentOn">>,) => Promise<void>;
+  updateLend: (
+    id: string,
+    data: Partial<
+      Pick<Lend, "title" | "amount" | "categoryId" | "note" | "lentOn">
+    >,
+  ) => Promise<void>;
   settleLend: (lendId: string) => Promise<void>;
   undoSettleLend: (lendId: string) => Promise<void>;
   deleteLend: (lendId: string) => Promise<void>;
@@ -270,104 +277,131 @@ export const useAppStore = create<AppStore>()((set, get) => ({
 
   // ── Transactions ───────────────────────────────────────────────────────────
   addTransaction: async (t, userId) => {
-    const id = nanoid();
-    const createdAt = new Date().toISOString();
-    set((s) => ({
-      transactions: [{ ...t, id, createdAt }, ...s.transactions],
-    }));
-    await supabase.from("transactions").insert({
-      id,
-      title: t.title,
-      amount: t.amount,
-      type: t.type,
-      category_id: t.categoryId,
-      date: t.date,
-      note: t.note ?? null,
-      created_at: createdAt,
-      user_id: userId,
-    });
+    try {
+      const id = nanoid();
+      const createdAt = new Date().toISOString();
+      set((s) => ({
+        transactions: [{ ...t, id, createdAt }, ...s.transactions],
+      }));
+      await supabase.from("transactions").insert({
+        id,
+        title: t.title,
+        amount: t.amount,
+        type: t.type,
+        category_id: t.categoryId,
+        date: t.date,
+        note: t.note ?? null,
+        created_at: createdAt,
+        user_id: userId,
+      });
+      toast.success("Transaction added");
+    } catch (error) {
+      toast.error("Failed to add transaction");
+      console.error(error);
+    }
   },
 
   updateTransaction: async (id, t) => {
-    set((s) => ({
-      transactions: s.transactions.map((tx) =>
-        tx.id === id ? { ...tx, ...t } : tx,
-      ),
-    }));
-    await supabase
-      .from("transactions")
-      .update({
-        ...(t.title !== undefined && { title: t.title }),
-        ...(t.amount !== undefined && { amount: t.amount }),
-        ...(t.type !== undefined && { type: t.type }),
-        ...(t.categoryId !== undefined && { category_id: t.categoryId }),
-        ...(t.date !== undefined && { date: t.date }),
-        ...(t.note !== undefined && { note: t.note }),
-      })
-      .eq("id", id);
+    try {
+      set((s) => ({
+        transactions: s.transactions.map((tx) =>
+          tx.id === id ? { ...tx, ...t } : tx,
+        ),
+      }));
+
+      const { error } = await supabase
+        .from("transactions")
+        .update({
+          ...(t.title !== undefined && { title: t.title }),
+          ...(t.amount !== undefined && { amount: t.amount }),
+          ...(t.type !== undefined && { type: t.type }),
+          ...(t.categoryId !== undefined && { category_id: t.categoryId }),
+          ...(t.date !== undefined && { date: t.date }),
+          ...(t.note !== undefined && { note: t.note }),
+        })
+        .eq("id", id);
+
+      if (error) throw error;
+
+      toast.success("Transaction updated");
+    } catch (error) {
+      toast.error("Failed to update transaction");
+      console.error(error);
+    }
   },
 
   deleteTransaction: async (id) => {
-    set((s) => ({
-      transactions: s.transactions.filter((tx) => tx.id !== id),
-    }));
-    await supabase.from("transactions").delete().eq("id", id);
+    try {
+      set((s) => ({
+        transactions: s.transactions.filter((tx) => tx.id !== id),
+      }));
+      await supabase.from("transactions").delete().eq("id", id);
+      toast.warning("Transaction deleted");
+    } catch (error) {
+      toast.error("Failed to delete transaction");
+      console.error(error);
+    }
   },
 
   // ── Categories ─────────────────────────────────────────────────────────────
   addCategory: async (c, userId) => {
-    const id = nanoid();
-    set((s) => ({ categories: [...s.categories, { ...c, id }] }));
-    await supabase.from("categories").insert({
-      id,
-      name: c.name,
-      icon: c.icon,
-      color: c.color,
-      type: c.type,
-      user_id: userId,
-    });
+    try {
+      const id = nanoid();
+      set((s) => ({ categories: [...s.categories, { ...c, id }] }));
+      await supabase.from("categories").insert({
+        id,
+        name: c.name,
+        icon: c.icon,
+        color: c.color,
+        type: c.type,
+        user_id: userId,
+      });
+      toast.success("Category created");
+    } catch (error) {
+      toast.error("Failed to add category");
+      console.error(error);
+    }
   },
 
   updateCategory: async (id, c) => {
-    set((s) => ({
-      categories: s.categories.map((cat) =>
-        cat.id === id ? { ...cat, ...c } : cat,
-      ),
-    }));
-    await supabase
-      .from("categories")
-      .update({
-        ...(c.name !== undefined && { name: c.name }),
-        ...(c.icon !== undefined && { icon: c.icon }),
-        ...(c.color !== undefined && { color: c.color }),
-        ...(c.type !== undefined && { type: c.type }),
-      })
-      .eq("id", id);
-  },
-
-  deleteCategory: async (id) => {
-    set((s) => ({
-      categories: s.categories.filter((cat) => cat.id !== id),
-    }));
-    await supabase.from("categories").delete().eq("id", id);
-  },
-
-  // ── Budgets ────────────────────────────────────────────────────────────────
-  setBudget: async (b, userId) => {
-    const existing = get().budgets.find(
-      (x) => x.categoryId === b.categoryId && x.month === b.month,
-    );
-    if (existing) {
+    try {
       set((s) => ({
-        budgets: s.budgets.map((x) =>
-          x.id === existing.id ? { ...x, amount: b.amount } : x,
+        categories: s.categories.map((cat) =>
+          cat.id === id ? { ...cat, ...c } : cat,
         ),
       }));
       await supabase
-        .from("budgets")
-        .update({ amount: b.amount })
-        .eq("id", existing.id);
-    } else {
+        .from("categories")
+        .update({
+          ...(c.name !== undefined && { name: c.name }),
+          ...(c.icon !== undefined && { icon: c.icon }),
+          ...(c.color !== undefined && { color: c.color }),
+          ...(c.type !== undefined && { type: c.type }),
+        })
+        .eq("id", id);
+      toast.success("Category created");
+    } catch (error) {
+      toast.error("Failed to update category");
+      console.error(error);
+    }
+  },
+
+  deleteCategory: async (id) => {
+    try {
+      set((s) => ({
+        categories: s.categories.filter((cat) => cat.id !== id),
+      }));
+      await supabase.from("categories").delete().eq("id", id);
+      toast.warning("Category deleted");
+    } catch (error) {
+      toast.error("Failed to delete category");
+      console.error(error);
+    }
+  },
+
+  // ── Budgets ────────────────────────────────────────────────────────────────
+  addBudget: async (b, userId) => {
+    try {
       const id = nanoid();
       set((s) => ({ budgets: [...s.budgets, { ...b, id }] }));
       await supabase.from("budgets").insert({
@@ -377,253 +411,155 @@ export const useAppStore = create<AppStore>()((set, get) => ({
         month: b.month,
         user_id: userId,
       });
+      toast.success("Budget created");
+    } catch (error) {
+      toast.error("Failed to create budget");
+      console.error(error);
+    }
+  },
+
+  updateBudget: async (id, amount) => {
+    try {
+      set((s) => ({
+        budgets: s.budgets.map((x) => (x.id === id ? { ...x, amount } : x)),
+      }));
+      await supabase.from("budgets").update({ amount }).eq("id", id);
+      toast.success("Budget updated");
+    } catch (error) {
+      toast.error("Failed to update budget");
+      console.error(error);
     }
   },
 
   deleteBudget: async (id) => {
-    set((s) => ({ budgets: s.budgets.filter((b) => b.id !== id) }));
-    await supabase.from("budgets").delete().eq("id", id);
+    try {
+      set((s) => ({ budgets: s.budgets.filter((b) => b.id !== id) }));
+      await supabase.from("budgets").delete().eq("id", id);
+      toast.warning("Budget deleted");
+    } catch (error) {
+      toast.error("Failed to delete budget");
+      console.error(error);
+    }
   },
 
   // ── Settings ───────────────────────────────────────────────────────────────
   updateSettings: async (s, userId) => {
-    set((state) => ({ settings: { ...state.settings, ...s } }));
-    await supabase
-      .from("settings")
-      .update({
-        ...(s.currency !== undefined && { currency: s.currency }),
-        ...(s.name !== undefined && { name: s.name }),
-        ...(s.theme !== undefined && { theme: s.theme }),
-      })
-      .eq("user_id", userId);
+    try {
+      set((state) => ({ settings: { ...state.settings, ...s } }));
+      await supabase
+        .from("settings")
+        .update({
+          ...(s.currency !== undefined && { currency: s.currency }),
+          ...(s.name !== undefined && { name: s.name }),
+          ...(s.theme !== undefined && { theme: s.theme }),
+        })
+        .eq("user_id", userId);
+      toast.success("Settings saved");
+    } catch (error) {
+      toast.error("Failed to update settings");
+      console.error(error);
+    }
   },
 
   // ── Savings Pots ───────────────────────────────────────────────────────────
   addPot: async (p, userId) => {
-    const id = nanoid();
-    const createdAt = new Date().toISOString();
-    const newPot: SavingsPot = {
-      ...p,
-      id,
-      userId,
-      currentAmount: 0,
-      isCompleted: false,
-      createdAt,
-    };
-    set((s) => ({ savingsPots: [newPot, ...s.savingsPots] }));
-    await supabase.from("savings_pots").insert({
-      id,
-      user_id: userId,
-      name: p.name,
-      icon: p.icon,
-      color: p.color,
-      type: p.type,
-      current_amount: 0,
-      is_completed: false,
-      created_at: createdAt,
-      target_amount: p.targetAmount ?? null,
-      deadline: p.deadline ?? null,
-      recurring_amount: p.recurringAmount ?? null,
-      is_locked: p.isLocked ?? false,
-      floor_amount: p.floorAmount ?? null,
-    });
+    try {
+      const id = nanoid();
+      const createdAt = new Date().toISOString();
+      const newPot: SavingsPot = {
+        ...p,
+        id,
+        userId,
+        currentAmount: 0,
+        isCompleted: false,
+        createdAt,
+      };
+      set((s) => ({ savingsPots: [newPot, ...s.savingsPots] }));
+      await supabase.from("savings_pots").insert({
+        id,
+        user_id: userId,
+        name: p.name,
+        icon: p.icon,
+        color: p.color,
+        type: p.type,
+        current_amount: 0,
+        is_completed: false,
+        created_at: createdAt,
+        target_amount: p.targetAmount ?? null,
+        deadline: p.deadline ?? null,
+        recurring_amount: p.recurringAmount ?? null,
+        is_locked: p.isLocked ?? false,
+        floor_amount: p.floorAmount ?? null,
+      });
+      toast.success("Pot created");
+    } catch (error) {
+      toast.error("Failed to create pot");
+      console.error(error);
+    }
   },
 
   updatePot: async (id, p) => {
-    set((s) => ({
-      savingsPots: s.savingsPots.map((pot) =>
-        pot.id === id ? { ...pot, ...p } : pot,
-      ),
-    }));
-    await supabase
-      .from("savings_pots")
-      .update({
-        ...(p.name !== undefined && { name: p.name }),
-        ...(p.icon !== undefined && { icon: p.icon }),
-        ...(p.color !== undefined && { color: p.color }),
-        ...(p.targetAmount !== undefined && { target_amount: p.targetAmount }),
-        ...(p.deadline !== undefined && { deadline: p.deadline }),
-        ...(p.recurringAmount !== undefined && {
-          recurring_amount: p.recurringAmount,
-        }),
-        ...(p.isLocked !== undefined && { is_locked: p.isLocked }),
-        ...(p.floorAmount !== undefined && { floor_amount: p.floorAmount }),
-        ...(p.isCompleted !== undefined && { is_completed: p.isCompleted }),
-        ...(p.currentAmount !== undefined && {
-          current_amount: p.currentAmount,
-        }),
-      })
-      .eq("id", id);
+    try {
+      set((s) => ({
+        savingsPots: s.savingsPots.map((pot) =>
+          pot.id === id ? { ...pot, ...p } : pot,
+        ),
+      }));
+      await supabase
+        .from("savings_pots")
+        .update({
+          ...(p.name !== undefined && { name: p.name }),
+          ...(p.icon !== undefined && { icon: p.icon }),
+          ...(p.color !== undefined && { color: p.color }),
+          ...(p.targetAmount !== undefined && {
+            target_amount: p.targetAmount,
+          }),
+          ...(p.deadline !== undefined && { deadline: p.deadline }),
+          ...(p.recurringAmount !== undefined && {
+            recurring_amount: p.recurringAmount,
+          }),
+          ...(p.isLocked !== undefined && { is_locked: p.isLocked }),
+          ...(p.floorAmount !== undefined && { floor_amount: p.floorAmount }),
+          ...(p.isCompleted !== undefined && { is_completed: p.isCompleted }),
+          ...(p.currentAmount !== undefined && {
+            current_amount: p.currentAmount,
+          }),
+        })
+        .eq("id", id);
+      toast.success("Pot updated");
+    } catch (error) {
+      toast.error("Failed to update pot");
+      console.error(error);
+    }
   },
 
   deletePot: async (id) => {
-    set((s) => ({
-      savingsPots: s.savingsPots.filter((p) => p.id !== id),
-      savingsTransactions: s.savingsTransactions.filter(
-        (t) => t.fromPotId !== id && t.toPotId !== id,
-      ),
-    }));
-    await supabase.from("savings_pots").delete().eq("id", id);
+    try {
+      set((s) => ({
+        savingsPots: s.savingsPots.filter((p) => p.id !== id),
+        savingsTransactions: s.savingsTransactions.filter(
+          (t) => t.fromPotId !== id && t.toPotId !== id,
+        ),
+      }));
+      await supabase.from("savings_pots").delete().eq("id", id);
+      toast.warning("Pot deleted");
+    } catch (error) {
+      toast.error("Failed to delete pot");
+      console.error(error);
+    }
   },
 
   depositToPot: async (potId, amount, note, userId) => {
-    const id = nanoid();
-    const txId = nanoid();
-    const createdAt = new Date().toISOString();
-    const date = createdAt.slice(0, 10);
-    const pot = get().savingsPots.find((p) => p.id === potId);
+    try {
+      const id = nanoid();
+      const txId = nanoid();
+      const createdAt = new Date().toISOString();
+      const date = createdAt.slice(0, 10);
+      const pot = get().savingsPots.find((p) => p.id === potId);
 
-    set((s) => ({
-      savingsPots: s.savingsPots.map((p) => {
-        if (p.id !== potId) return p;
-        const newAmount = p.currentAmount + amount;
-        return {
-          ...p,
-          currentAmount: newAmount,
-          isCompleted: p.targetAmount
-            ? newAmount >= p.targetAmount
-            : p.isCompleted,
-        };
-      }),
-      savingsTransactions: [
-        {
-          id,
-          userId,
-          type: "deposit",
-          amount,
-          fromPotId: null,
-          toPotId: potId,
-          note,
-          createdAt,
-        },
-        ...s.savingsTransactions,
-      ],
-      transactions: [
-        {
-          id: txId,
-          title: `Saved to ${pot?.name ?? "pot"}`,
-          amount,
-          type: "transfer",
-          categoryId: "savings",
-          date,
-          note,
-          createdAt,
-        },
-        ...s.transactions,
-      ],
-    }));
-
-    const updatedPot = get().savingsPots.find((p) => p.id === potId);
-    await Promise.all([
-      supabase.from("savings_transactions").insert({
-        id,
-        user_id: userId,
-        type: "deposit",
-        amount,
-        from_pot_id: null,
-        to_pot_id: potId,
-        note: note ?? null,
-        created_at: createdAt,
-      }),
-      supabase
-        .from("savings_pots")
-        .update({
-          current_amount: updatedPot?.currentAmount,
-          is_completed: updatedPot?.isCompleted,
-        })
-        .eq("id", potId),
-      supabase.from("transactions").insert({
-        id: txId,
-        user_id: userId,
-        title: `Saved to ${pot?.name ?? "pot"}`,
-        amount,
-        type: "transfer",
-        category_id: "savings",
-        date,
-        note: note ?? null,
-        created_at: createdAt,
-      }),
-    ]);
-  },
-
-  withdrawFromPot: async (potId, amount, note, userId) => {
-    const id = nanoid();
-    const txId = nanoid();
-    const createdAt = new Date().toISOString();
-    const date = createdAt.slice(0, 10);
-    const pot = get().savingsPots.find((p) => p.id === potId);
-
-    set((s) => ({
-      savingsPots: s.savingsPots.map((p) =>
-        p.id === potId ? { ...p, currentAmount: p.currentAmount - amount } : p,
-      ),
-      savingsTransactions: [
-        {
-          id,
-          userId,
-          type: "withdrawal",
-          amount,
-          fromPotId: potId,
-          toPotId: null,
-          note,
-          createdAt,
-        },
-        ...s.savingsTransactions,
-      ],
-      transactions: [
-        {
-          id: txId,
-          title: `Withdrawn from ${pot?.name ?? "pot"}`,
-          amount,
-          type: "transfer",
-          categoryId: "savings",
-          date,
-          note,
-          createdAt,
-        },
-        ...s.transactions,
-      ],
-    }));
-
-    const updatedPot = get().savingsPots.find((p) => p.id === potId);
-    await Promise.all([
-      supabase.from("savings_transactions").insert({
-        id,
-        user_id: userId,
-        type: "withdrawal",
-        amount,
-        from_pot_id: potId,
-        to_pot_id: null,
-        note: note ?? null,
-        created_at: createdAt,
-      }),
-      supabase
-        .from("savings_pots")
-        .update({ current_amount: updatedPot?.currentAmount })
-        .eq("id", potId),
-      supabase.from("transactions").insert({
-        id: txId,
-        user_id: userId,
-        title: `Withdrawn from ${pot?.name ?? "pot"}`,
-        amount,
-        type: "transfer",
-        category_id: "savings",
-        date,
-        note: note ?? null,
-        created_at: createdAt,
-      }),
-    ]);
-  },
-
-  transferBetweenPots: async (fromPotId, toPotId, amount, note, userId) => {
-    const id = nanoid();
-    const createdAt = new Date().toISOString();
-
-    set((s) => ({
-      savingsPots: s.savingsPots.map((p) => {
-        if (p.id === fromPotId)
-          return { ...p, currentAmount: p.currentAmount - amount };
-        if (p.id === toPotId) {
+      set((s) => ({
+        savingsPots: s.savingsPots.map((p) => {
+          if (p.id !== potId) return p;
           const newAmount = p.currentAmount + amount;
           return {
             ...p,
@@ -632,282 +568,484 @@ export const useAppStore = create<AppStore>()((set, get) => ({
               ? newAmount >= p.targetAmount
               : p.isCompleted,
           };
-        }
-        return p;
-      }),
-      savingsTransactions: [
-        {
+        }),
+        savingsTransactions: [
+          {
+            id,
+            userId,
+            type: "deposit",
+            amount,
+            fromPotId: null,
+            toPotId: potId,
+            note,
+            createdAt,
+          },
+          ...s.savingsTransactions,
+        ],
+        transactions: [
+          {
+            id: txId,
+            title: `Saved to ${pot?.name ?? "pot"}`,
+            amount,
+            type: "transfer",
+            categoryId: "savings",
+            date,
+            note,
+            createdAt,
+          },
+          ...s.transactions,
+        ],
+      }));
+
+      const updatedPot = get().savingsPots.find((p) => p.id === potId);
+      await Promise.all([
+        supabase.from("savings_transactions").insert({
           id,
-          userId,
+          user_id: userId,
+          type: "deposit",
+          amount,
+          from_pot_id: null,
+          to_pot_id: potId,
+          note: note ?? null,
+          created_at: createdAt,
+        }),
+        supabase
+          .from("savings_pots")
+          .update({
+            current_amount: updatedPot?.currentAmount,
+            is_completed: updatedPot?.isCompleted,
+          })
+          .eq("id", potId),
+        supabase.from("transactions").insert({
+          id: txId,
+          user_id: userId,
+          title: `Saved to ${pot?.name ?? "pot"}`,
+          amount,
+          type: "transfer",
+          category_id: "savings",
+          date,
+          note: note ?? null,
+          created_at: createdAt,
+        }),
+      ]);
+      toast.success("Deposit saved");
+    } catch (error) {
+      toast.error("Failed to deposit to pot");
+      console.error(error);
+    }
+  },
+
+  withdrawFromPot: async (potId, amount, note, userId) => {
+    try {
+      const id = nanoid();
+      const txId = nanoid();
+      const createdAt = new Date().toISOString();
+      const date = createdAt.slice(0, 10);
+      const pot = get().savingsPots.find((p) => p.id === potId);
+
+      set((s) => ({
+        savingsPots: s.savingsPots.map((p) =>
+          p.id === potId
+            ? { ...p, currentAmount: p.currentAmount - amount }
+            : p,
+        ),
+        savingsTransactions: [
+          {
+            id,
+            userId,
+            type: "withdrawal",
+            amount,
+            fromPotId: potId,
+            toPotId: null,
+            note,
+            createdAt,
+          },
+          ...s.savingsTransactions,
+        ],
+        transactions: [
+          {
+            id: txId,
+            title: `Withdrawn from ${pot?.name ?? "pot"}`,
+            amount,
+            type: "transfer",
+            categoryId: "savings",
+            date,
+            note,
+            createdAt,
+          },
+          ...s.transactions,
+        ],
+      }));
+
+      const updatedPot = get().savingsPots.find((p) => p.id === potId);
+      await Promise.all([
+        supabase.from("savings_transactions").insert({
+          id,
+          user_id: userId,
+          type: "withdrawal",
+          amount,
+          from_pot_id: potId,
+          to_pot_id: null,
+          note: note ?? null,
+          created_at: createdAt,
+        }),
+        supabase
+          .from("savings_pots")
+          .update({ current_amount: updatedPot?.currentAmount })
+          .eq("id", potId),
+        supabase.from("transactions").insert({
+          id: txId,
+          user_id: userId,
+          title: `Withdrawn from ${pot?.name ?? "pot"}`,
+          amount,
+          type: "transfer",
+          category_id: "savings",
+          date,
+          note: note ?? null,
+          created_at: createdAt,
+        }),
+      ]);
+      toast.success("Withdrawal successful");
+    } catch (error) {
+      toast.error("Failed to withdraw from pot");
+      console.error(error);
+    }
+  },
+
+  transferBetweenPots: async (fromPotId, toPotId, amount, note, userId) => {
+    try {
+      const id = nanoid();
+      const createdAt = new Date().toISOString();
+
+      set((s) => ({
+        savingsPots: s.savingsPots.map((p) => {
+          if (p.id === fromPotId)
+            return { ...p, currentAmount: p.currentAmount - amount };
+          if (p.id === toPotId) {
+            const newAmount = p.currentAmount + amount;
+            return {
+              ...p,
+              currentAmount: newAmount,
+              isCompleted: p.targetAmount
+                ? newAmount >= p.targetAmount
+                : p.isCompleted,
+            };
+          }
+          return p;
+        }),
+        savingsTransactions: [
+          {
+            id,
+            userId,
+            type: "transfer",
+            amount,
+            fromPotId,
+            toPotId,
+            note,
+            createdAt,
+          },
+          ...s.savingsTransactions,
+        ],
+      }));
+
+      const fromPot = get().savingsPots.find((p) => p.id === fromPotId);
+      const toPot = get().savingsPots.find((p) => p.id === toPotId);
+      await Promise.all([
+        supabase.from("savings_transactions").insert({
+          id,
+          user_id: userId,
           type: "transfer",
           amount,
-          fromPotId,
-          toPotId,
-          note,
-          createdAt,
-        },
-        ...s.savingsTransactions,
-      ],
-    }));
-
-    const fromPot = get().savingsPots.find((p) => p.id === fromPotId);
-    const toPot = get().savingsPots.find((p) => p.id === toPotId);
-    await Promise.all([
-      supabase.from("savings_transactions").insert({
-        id,
-        user_id: userId,
-        type: "transfer",
-        amount,
-        from_pot_id: fromPotId,
-        to_pot_id: toPotId,
-        note: note ?? null,
-        created_at: createdAt,
-      }),
-      supabase
-        .from("savings_pots")
-        .update({ current_amount: fromPot?.currentAmount })
-        .eq("id", fromPotId),
-      supabase
-        .from("savings_pots")
-        .update({
-          current_amount: toPot?.currentAmount,
-          is_completed: toPot?.isCompleted,
-        })
-        .eq("id", toPotId),
-    ]);
+          from_pot_id: fromPotId,
+          to_pot_id: toPotId,
+          note: note ?? null,
+          created_at: createdAt,
+        }),
+        supabase
+          .from("savings_pots")
+          .update({ current_amount: fromPot?.currentAmount })
+          .eq("id", fromPotId),
+        supabase
+          .from("savings_pots")
+          .update({
+            current_amount: toPot?.currentAmount,
+            is_completed: toPot?.isCompleted,
+          })
+          .eq("id", toPotId),
+      ]);
+      toast.success("Transfer successful");
+    } catch (error) {
+      toast.error("Failed to transfer between pots");
+      console.error(error);
+    }
   },
 
   // ── Lends ──────────────────────────────────────────────────────────────────
   addLend: async (data, userId) => {
-    const lendId = nanoid();
-    const debitTxId = nanoid();
-    const createdAt = new Date().toISOString();
+    try {
+      const lendId = nanoid();
+      const debitTxId = nanoid();
+      const createdAt = new Date().toISOString();
 
-    const debitTx: Transaction = {
-      id: debitTxId,
-      title: `Lent · ${data.title}`,
-      amount: data.amount,
-      type: "transfer", // hidden from income/expense stats
-      categoryId: data.categoryId,
-      date: data.lentOn,
-      note: data.note,
-      createdAt,
-    };
-
-    const lend: Lend = {
-      id: lendId,
-      userId,
-      title: data.title,
-      amount: data.amount,
-      categoryId: data.categoryId,
-      note: data.note,
-      lentOn: data.lentOn,
-      settledOn: null,
-      walletDebitTxId: debitTxId,
-      walletCreditTxId: null,
-      createdAt,
-    };
-
-    // Optimistic
-    set((s) => ({
-      lends: [lend, ...s.lends],
-      transactions: [debitTx, ...s.transactions],
-    }));
-
-    await Promise.all([
-      supabase.from("transactions").insert({
+      const debitTx: Transaction = {
         id: debitTxId,
-        user_id: userId,
-        title: debitTx.title,
+        title: `Lent · ${data.title}`,
         amount: data.amount,
-        type: "transfer",
-        category_id: data.categoryId,
+        type: "transfer", // hidden from income/expense stats
+        categoryId: data.categoryId,
         date: data.lentOn,
-        note: data.note ?? null,
-        created_at: createdAt,
-      }),
-      supabase.from("lends").insert({
+        note: data.note,
+        createdAt,
+      };
+
+      const lend: Lend = {
         id: lendId,
-        user_id: userId,
+        userId,
         title: data.title,
         amount: data.amount,
-        category_id: data.categoryId,
-        note: data.note ?? null,
-        lent_on: data.lentOn,
-        settled_on: null,
-        wallet_debit_tx_id: debitTxId,
-        wallet_credit_tx_id: null,
-        created_at: createdAt,
-      }),
-    ]);
+        categoryId: data.categoryId,
+        note: data.note,
+        lentOn: data.lentOn,
+        settledOn: null,
+        walletDebitTxId: debitTxId,
+        walletCreditTxId: null,
+        createdAt,
+      };
+
+      // Optimistic
+      set((s) => ({
+        lends: [lend, ...s.lends],
+        transactions: [debitTx, ...s.transactions],
+      }));
+
+      await Promise.all([
+        supabase.from("transactions").insert({
+          id: debitTxId,
+          user_id: userId,
+          title: debitTx.title,
+          amount: data.amount,
+          type: "transfer",
+          category_id: data.categoryId,
+          date: data.lentOn,
+          note: data.note ?? null,
+          created_at: createdAt,
+        }),
+        supabase.from("lends").insert({
+          id: lendId,
+          user_id: userId,
+          title: data.title,
+          amount: data.amount,
+          category_id: data.categoryId,
+          note: data.note ?? null,
+          lent_on: data.lentOn,
+          settled_on: null,
+          wallet_debit_tx_id: debitTxId,
+          wallet_credit_tx_id: null,
+          created_at: createdAt,
+        }),
+      ]);
+      toast.success("Lend recorded");
+    } catch (error) {
+      toast.error("Failed to record lend");
+      console.log(error);
+    }
   },
 
   updateLend: async (id, data) => {
-    const lend = get().lends.find((l) => l.id === id);
-    if (!lend) return;
+    try {
+      const lend = get().lends.find((l) => l.id === id);
+      if (!lend) return;
 
-    const amountChanged =
-      data.amount !== undefined && data.amount !== lend.amount;
+      const amountChanged =
+        data.amount !== undefined && data.amount !== lend.amount;
 
-    // Optimistic update on lend record
-    set((s) => ({
-      lends: s.lends.map((l) => (l.id === id ? { ...l, ...data } : l)),
-      transactions: s.transactions.map((t) => {
-        // Update the debit tx title/amount/date if lent details changed
-        if (t.id === lend.walletDebitTxId) {
-          return {
-            ...t,
+      // Optimistic update on lend record
+      set((s) => ({
+        lends: s.lends.map((l) => (l.id === id ? { ...l, ...data } : l)),
+        transactions: s.transactions.map((t) => {
+          // Update the debit tx title/amount/date if lent details changed
+          if (t.id === lend.walletDebitTxId) {
+            return {
+              ...t,
+              title: `Lent · ${data.title ?? lend.title}`,
+              amount: data.amount ?? lend.amount,
+              date: data.lentOn ?? lend.lentOn,
+              categoryId: data.categoryId ?? lend.categoryId,
+            };
+          }
+          // Update the credit tx title if exists
+          if (t.id === lend.walletCreditTxId) {
+            return {
+              ...t,
+              title: `Returned · ${data.title ?? lend.title}`,
+              amount: data.amount ?? lend.amount,
+              categoryId: data.categoryId ?? lend.categoryId,
+            };
+          }
+          return t;
+        }),
+      }));
+
+      await Promise.all([
+        supabase
+          .from("lends")
+          .update({
+            ...(data.title !== undefined && { title: data.title }),
+            ...(data.amount !== undefined && { amount: data.amount }),
+            ...(data.categoryId !== undefined && {
+              category_id: data.categoryId,
+            }),
+            ...(data.note !== undefined && { note: data.note }),
+            ...(data.lentOn !== undefined && { lent_on: data.lentOn }),
+          })
+          .eq("id", id),
+
+        supabase
+          .from("transactions")
+          .update({
             title: `Lent · ${data.title ?? lend.title}`,
             amount: data.amount ?? lend.amount,
             date: data.lentOn ?? lend.lentOn,
-            categoryId: data.categoryId ?? lend.categoryId,
-          };
-        }
-        // Update the credit tx title if exists
-        if (t.id === lend.walletCreditTxId) {
-          return {
-            ...t,
-            title: `Returned · ${data.title ?? lend.title}`,
-            amount: data.amount ?? lend.amount,
-            categoryId: data.categoryId ?? lend.categoryId,
-          };
-        }
-        return t;
-      }),
-    }));
+            category_id: data.categoryId ?? lend.categoryId,
+          })
+          .eq("id", lend.walletDebitTxId),
 
-    await Promise.all([
-      supabase
-        .from("lends")
-        .update({
-          ...(data.title !== undefined && { title: data.title }),
-          ...(data.amount !== undefined && { amount: data.amount }),
-          ...(data.categoryId !== undefined && {
-            category_id: data.categoryId,
-          }),
-          ...(data.note !== undefined && { note: data.note }),
-          ...(data.lentOn !== undefined && { lent_on: data.lentOn }),
-        })
-        .eq("id", id),
-
-      supabase
-        .from("transactions")
-        .update({
-          title: `Lent · ${data.title ?? lend.title}`,
-          amount: data.amount ?? lend.amount,
-          date: data.lentOn ?? lend.lentOn,
-          category_id: data.categoryId ?? lend.categoryId,
-        })
-        .eq("id", lend.walletDebitTxId),
-
-      ...(lend.walletCreditTxId
-        ? [
-            supabase
-              .from("transactions")
-              .update({
-                title: `Returned · ${data.title ?? lend.title}`,
-                amount: data.amount ?? lend.amount,
-                category_id: data.categoryId ?? lend.categoryId,
-              })
-              .eq("id", lend.walletCreditTxId),
-          ]
-        : []),
-    ]);
+        ...(lend.walletCreditTxId
+          ? [
+              supabase
+                .from("transactions")
+                .update({
+                  title: `Returned · ${data.title ?? lend.title}`,
+                  amount: data.amount ?? lend.amount,
+                  category_id: data.categoryId ?? lend.categoryId,
+                })
+                .eq("id", lend.walletCreditTxId),
+            ]
+          : []),
+      ]);
+      toast.success("Lend Updated");
+    } catch (error) {
+      toast.error("Failed to update lend");
+      console.log(error);
+    }
   },
 
   settleLend: async (lendId) => {
-    const lend = get().lends.find((l) => l.id === lendId);
-    if (!lend || lend.settledOn) return;
+    try {
+      const lend = get().lends.find((l) => l.id === lendId);
+      if (!lend || lend.settledOn) return;
 
-    const creditTxId = nanoid();
-    const settledOn = new Date().toISOString().slice(0, 10);
-    const createdAt = new Date().toISOString();
+      const creditTxId = nanoid();
+      const settledOn = new Date().toISOString().slice(0, 10);
+      const createdAt = new Date().toISOString();
 
-    const creditTx: Transaction = {
-      id: creditTxId,
-      title: `Returned · ${lend.title}`,
-      amount: lend.amount,
-      type: "transfer", // hidden from income stats — it's not real income
-      categoryId: lend.categoryId,
-      date: settledOn,
-      createdAt,
-    };
-
-    // Optimistic
-    set((s) => ({
-      lends: s.lends.map((l) =>
-        l.id === lendId ? { ...l, settledOn, walletCreditTxId: creditTxId } : l,
-      ),
-      transactions: [creditTx, ...s.transactions],
-    }));
-
-    await Promise.all([
-      supabase.from("transactions").insert({
+      const creditTx: Transaction = {
         id: creditTxId,
-        user_id: lend.userId,
-        title: creditTx.title,
+        title: `Returned · ${lend.title}`,
         amount: lend.amount,
-        type: "transfer",
-        category_id: lend.categoryId,
+        type: "transfer", // hidden from income stats — it's not real income
+        categoryId: lend.categoryId,
         date: settledOn,
-        note: null,
-        created_at: createdAt,
-      }),
-      supabase
-        .from("lends")
-        .update({
-          settled_on: settledOn,
-          wallet_credit_tx_id: creditTxId,
-        })
-        .eq("id", lendId),
-    ]);
+        createdAt,
+      };
+
+      // Optimistic
+      set((s) => ({
+        lends: s.lends.map((l) =>
+          l.id === lendId
+            ? { ...l, settledOn, walletCreditTxId: creditTxId }
+            : l,
+        ),
+        transactions: [creditTx, ...s.transactions],
+      }));
+
+      await Promise.all([
+        supabase.from("transactions").insert({
+          id: creditTxId,
+          user_id: lend.userId,
+          title: creditTx.title,
+          amount: lend.amount,
+          type: "transfer",
+          category_id: lend.categoryId,
+          date: settledOn,
+          note: null,
+          created_at: createdAt,
+        }),
+        supabase
+          .from("lends")
+          .update({
+            settled_on: settledOn,
+            wallet_credit_tx_id: creditTxId,
+          })
+          .eq("id", lendId),
+      ]);
+      toast.success("Marked as returned");
+    } catch (error) {
+      toast.error("Failed to mark lend");
+      console.log(error);
+    }
   },
 
   undoSettleLend: async (lendId) => {
-    const lend = get().lends.find((l) => l.id === lendId);
-    if (!lend || !lend.settledOn || !lend.walletCreditTxId) return;
+    try {
+      const lend = get().lends.find((l) => l.id === lendId);
+      if (!lend || !lend.settledOn || !lend.walletCreditTxId) return;
 
-    const creditTxId = lend.walletCreditTxId;
+      const creditTxId = lend.walletCreditTxId;
 
-    // Optimistic
-    set((s) => ({
-      lends: s.lends.map((l) =>
-        l.id === lendId ? { ...l, settledOn: null, walletCreditTxId: null } : l,
-      ),
-      transactions: s.transactions.filter((t) => t.id !== creditTxId),
-    }));
+      // Optimistic
+      set((s) => ({
+        lends: s.lends.map((l) =>
+          l.id === lendId
+            ? { ...l, settledOn: null, walletCreditTxId: null }
+            : l,
+        ),
+        transactions: s.transactions.filter((t) => t.id !== creditTxId),
+      }));
 
-    await Promise.all([
-      supabase.from("transactions").delete().eq("id", creditTxId),
-      supabase
-        .from("lends")
-        .update({
-          settled_on: null,
-          wallet_credit_tx_id: null,
-        })
-        .eq("id", lendId),
-    ]);
+      await Promise.all([
+        supabase.from("transactions").delete().eq("id", creditTxId),
+        supabase
+          .from("lends")
+          .update({
+            settled_on: null,
+            wallet_credit_tx_id: null,
+          })
+          .eq("id", lendId),
+      ]);
+      toast.success("Undo lend sucessfull");
+    } catch (error) {
+      toast.error("Failed to undo lend");
+    }
   },
 
   deleteLend: async (lendId) => {
-    const lend = get().lends.find((l) => l.id === lendId);
-    if (!lend) return;
+    try {
+      const lend = get().lends.find((l) => l.id === lendId);
+      if (!lend) return;
 
-    const txIdsToDelete = [lend.walletDebitTxId, lend.walletCreditTxId].filter(
-      Boolean,
-    ) as string[];
+      const txIdsToDelete = [
+        lend.walletDebitTxId,
+        lend.walletCreditTxId,
+      ].filter(Boolean) as string[];
 
-    // Optimistic
-    set((s) => ({
-      lends: s.lends.filter((l) => l.id !== lendId),
-      transactions: s.transactions.filter((t) => !txIdsToDelete.includes(t.id)),
-    }));
+      // Optimistic
+      set((s) => ({
+        lends: s.lends.filter((l) => l.id !== lendId),
+        transactions: s.transactions.filter(
+          (t) => !txIdsToDelete.includes(t.id),
+        ),
+      }));
 
-    await Promise.all([
-      supabase.from("lends").delete().eq("id", lendId),
-      ...txIdsToDelete.map((id) =>
-        supabase.from("transactions").delete().eq("id", id),
-      ),
-    ]);
+      await Promise.all([
+        supabase.from("lends").delete().eq("id", lendId),
+        ...txIdsToDelete.map((id) =>
+          supabase.from("transactions").delete().eq("id", id),
+        ),
+      ]);
+      toast.warning("Lend Deleted");
+    } catch (error) {
+      toast.error("Failed to delete lend");
+    }
   },
 }));
