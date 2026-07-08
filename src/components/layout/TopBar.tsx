@@ -1,10 +1,12 @@
-import { useLocation } from "react-router-dom";
-import { Sparkles } from "lucide-react";
+import { useLocation, useNavigate } from "react-router-dom";
+import { useState } from "react";
+import { useAuth } from "@/hooks/useAuth";
 
 const TITLES: Record<string, string> = {
   "/": "Dashboard",
   "/transactions": "Transactions",
   "/budgets": "Budgets",
+  "/savings": "Savings",
   "/categories": "Categories",
   "/reports": "Reports",
   "/settings": "Settings",
@@ -12,7 +14,18 @@ const TITLES: Record<string, string> = {
 
 export function TopBar() {
   const { pathname } = useLocation();
+  const navigate = useNavigate();
+  const { user } = useAuth();
+  const [avatarError, setAvatarError] = useState(false);
   const title = TITLES[pathname] ?? "MoneyZombie";
+
+  const avatarUrl = user?.user_metadata?.avatar_url as string | undefined;
+  const fullName = (user?.user_metadata?.full_name ??
+    user?.user_metadata?.name ??
+    user?.email ??
+    "") as string;
+  const initial = fullName.charAt(0).toUpperCase() || "?";
+  const showImage = Boolean(avatarUrl) && !avatarError;
 
   return (
     <header
@@ -24,12 +37,27 @@ export function TopBar() {
       }}
     >
       <div className="flex items-center gap-2">
-        <div
-          className="w-6 h-6 rounded-md flex items-center justify-center"
+        <button
+          type="button"
+          onClick={() => navigate("/settings")}
+          aria-label="Go to settings"
+          className="w-6 h-6 rounded-full flex items-center justify-center overflow-hidden shrink-0"
           style={{ background: "var(--color-accent)" }}
         >
-          <Sparkles size={12} color="black" />
-        </div>
+          {showImage ? (
+            <img
+              src={avatarUrl}
+              alt={fullName || "Profile"}
+              referrerPolicy="no-referrer"
+              className="w-full h-full object-cover"
+              onError={() => setAvatarError(true)}
+            />
+          ) : (
+            <span className="text-[10px] font-bold" style={{ color: "black" }}>
+              {initial}
+            </span>
+          )}
+        </button>
         <span
           className="font-bold text-base"
           style={{ fontFamily: "var(--font-display)" }}

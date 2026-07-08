@@ -1,4 +1,5 @@
-import { NavLink } from "react-router-dom";
+import { NavLink, useNavigate } from "react-router-dom";
+import { useState } from "react";
 import {
   LayoutDashboard,
   ArrowLeftRight,
@@ -10,6 +11,7 @@ import {
   Sparkles,
 } from "lucide-react";
 import { useAppStore } from "../../store/useAppStore";
+import { useAuth } from "../../hooks/useAuth";
 import { useCurrency } from "../../hooks/useCurrency";
 import { useRunningBalance } from "../../hooks/useTransactions";
 import { format } from "date-fns";
@@ -25,10 +27,18 @@ const NAV = [
 ];
 
 export function Sidebar() {
+  const navigate = useNavigate();
+  const { user } = useAuth();
+  const [avatarError, setAvatarError] = useState(false);
+
   const name = useAppStore((s) => s.settings.name);
   const { format: fmt } = useCurrency();
   const currentMonth = format(new Date(), "yyyy-MM");
   const balance = useRunningBalance(currentMonth);
+
+  const avatarUrl = user?.user_metadata?.avatar_url as string | undefined;
+  const initial = name ? name[0].toUpperCase() : "U";
+  const showImage = Boolean(avatarUrl) && !avatarError;
 
   return (
     <aside
@@ -125,17 +135,29 @@ export function Sidebar() {
 
       {/* User */}
       <div className="p-4 mt-auto">
-        <div
-          className="flex items-center gap-3 px-3 py-2 rounded-xl"
+        <button
+          type="button"
+          onClick={() => navigate("/settings")}
+          className="w-full flex items-center gap-3 px-3 py-2 rounded-xl"
           style={{ border: "1px solid var(--color-border)" }}
         >
           <div
-            className="w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold"
+            className="w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold overflow-hidden shrink-0"
             style={{ background: "var(--color-accent)", color: "black" }}
           >
-            {name ? name[0].toUpperCase() : "U"}
+            {showImage ? (
+              <img
+                src={avatarUrl}
+                alt={name || "Profile"}
+                referrerPolicy="no-referrer"
+                className="w-full h-full object-cover"
+                onError={() => setAvatarError(true)}
+              />
+            ) : (
+              initial
+            )}
           </div>
-          <div className="flex-1 min-w-0">
+          <div className="flex-1 min-w-0 text-left">
             <p
               className="text-sm font-medium truncate"
               style={{ color: "var(--color-text-primary)" }}
@@ -149,7 +171,7 @@ export function Sidebar() {
               {format(new Date(), "MMMM yyyy")}
             </p>
           </div>
-        </div>
+        </button>
       </div>
     </aside>
   );

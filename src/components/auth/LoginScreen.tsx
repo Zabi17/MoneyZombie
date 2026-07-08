@@ -53,9 +53,9 @@ export function LoginScreen() {
             <div>
               <SplitText
                 text="MoneyZombie"
-                className="text-2xl font-semibold text-center"
-                delay={200}
-                duration={1.25}
+                className="text-3xl font-semibold text-center"
+                delay={100}
+                duration={1}
                 ease="power3.out"
                 splitType="chars"
                 from={{ opacity: 0, y: 40 }}
@@ -77,11 +77,10 @@ export function LoginScreen() {
           <button
             onClick={handleLogin}
             disabled={loading}
-            className="w-full flex items-center justify-center gap-3 py-3 px-4 rounded-xl text-sm font-semibold transition-opacity hover:opacity-80 disabled:opacity-50"
+            className="w-full flex items-center justify-center gap-3 py-3 px-4 text-white/70 rounded-xl text-sm font-semibold transition-opacity hover:opacity-80 disabled:opacity-50"
             style={{
               background: "var(--color-surface-2)",
               border: "1px solid var(--color-border)",
-              color: "var(--color-text-primary)",
             }}
           >
             {/* Google icon SVG */}
@@ -108,7 +107,7 @@ export function LoginScreen() {
           <p className="text-xs" style={{ color: "var(--color-text-muted)" }}>
             Your data is secured & private | made by{" "}
             <a
-              href="https://linkedin.com/in/zabiahmed3717"
+              href="https://zabi17.github.io/portfolio"
               target="_blank"
               rel="noopener noreferrer"
               className="underline hover:text-accent"
