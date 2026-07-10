@@ -10,6 +10,16 @@ import { LendForm } from "../components/lends/LendForm";
 import { LendCard } from "../components/lends/LendCard";
 import { format, isThisYear } from "date-fns";
 import { useCurrency } from "@/hooks/useCurrency";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 export default function Transactions() {
   const transactions = useAppStore((s) => s.transactions);
@@ -29,8 +39,12 @@ export default function Transactions() {
   const [search, setSearch] = useState("");
   const [catFilter, setCatFilter] = useState("");
   const [typeFilter, setTypeFilter] = useState<
-    TransactionType | "all" | "lends"
+  TransactionType | "all" | "lends"
   >("all");
+
+  // Confirmation state for settle / undo actions
+  const [settlingLend, setSettlingLend] = useState<Lend | null>(null);
+  const [undoingLend, setUndoingLend] = useState<Lend | null>(null);
 
   const isLendsView = typeFilter === "lends";
   const { format: fmt } = useCurrency();
@@ -226,8 +240,14 @@ export default function Transactions() {
               <LendCard
                 key={lend.id}
                 lend={lend}
-                onSettle={settleLend}
-                onUndo={undoSettleLend}
+                onSettle={(id) => {
+                  const l = lends.find((x) => x.id === id);
+                  if (l) setSettlingLend(l);
+                }}
+                onUndo={(id) => {
+                  const l = lends.find((x) => x.id === id);
+                  if (l) setUndoingLend(l);
+                }}
                 onEdit={(id) => {
                   const l = lends.find((x) => x.id === id);
                   if (l) {
@@ -319,7 +339,7 @@ export default function Transactions() {
         editing={editingLend}
       />
 
-      {/* Delete tx confirm */}
+      {/* Delete tx confirm — unchanged */}
       <DeleteDialog
         open={!!deleting}
         title={deleting?.title}
@@ -330,7 +350,7 @@ export default function Transactions() {
         }}
       />
 
-      {/* Delete lend confirm */}
+      {/* Delete lend confirm — unchanged */}
       <DeleteDialog
         open={!!deletingLendId}
         title="this lend and its wallet transactions"
@@ -340,6 +360,116 @@ export default function Transactions() {
           setDeletingLendId(null);
         }}
       />
+
+      {/* Mark as settled confirm — shadcn AlertDialog */}
+      <AlertDialog
+        open={!!settlingLend}
+        onOpenChange={(open) => !open && setSettlingLend(null)}
+      >
+        <AlertDialogContent
+          style={{
+            background: "var(--color-surface)",
+            border: "1px solid var(--color-border)",
+          }}
+        >
+          <AlertDialogHeader>
+            <AlertDialogTitle
+              style={{
+                fontFamily: "var(--font-display)",
+                color: "var(--color-text-primary)",
+              }}
+            >
+              Mark as settled?
+            </AlertDialogTitle>
+            <AlertDialogDescription
+              style={{ color: "var(--color-text-muted)" }}
+            >
+              {settlingLend
+                ? `"${settlingLend.title}" (${fmt(settlingLend.amount)}) will be marked as settled.`
+                : ""}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel
+              onClick={() => setSettlingLend(null)}
+              style={{
+                background: "transparent",
+                border: "1px solid var(--color-border)",
+                color: "var(--color-text-secondary)",
+              }}
+            >
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                if (settlingLend) settleLend(settlingLend.id);
+                setSettlingLend(null);
+              }}
+              style={{
+                background: "var(--color-accent)",
+                color: "black",
+              }}
+            >
+              Settle
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Undo settled confirm — shadcn AlertDialog */}
+      <AlertDialog
+        open={!!undoingLend}
+        onOpenChange={(open) => !open && setUndoingLend(null)}
+      >
+        <AlertDialogContent
+          style={{
+            background: "var(--color-surface)",
+            border: "1px solid var(--color-border)",
+          }}
+        >
+          <AlertDialogHeader>
+            <AlertDialogTitle
+              style={{
+                fontFamily: "var(--font-display)",
+                color: "var(--color-text-primary)",
+              }}
+            >
+              Undo settlement?
+            </AlertDialogTitle>
+            <AlertDialogDescription
+              style={{ color: "var(--color-text-muted)" }}
+            >
+              {undoingLend
+                ? `"${undoingLend.title}" will be marked as pending again.`
+                : ""}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel
+              onClick={() => setUndoingLend(null)}
+              style={{
+                background: "transparent",
+                border: "1px solid var(--color-border)",
+                color: "var(--color-text-secondary)",
+              }}
+            >
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                if (undoingLend) undoSettleLend(undoingLend.id);
+                setUndoingLend(null);
+              }}
+              style={{
+                background: "var(--color-expense)",
+                color: "white",
+              }}
+            >
+              Undo
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

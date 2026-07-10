@@ -101,3 +101,23 @@ export function useRunningBalance(upToMonth: string) {
     );
   }, [transactions, upToMonth]);
 }
+
+export function useSavingsBalance(upToMonth: string) {
+  const transactions = useAppStore((s) => s.transactions);
+
+  return useMemo(() => {
+    const prior = transactions.filter((t) => t.date.slice(0, 7) <= upToMonth);
+
+    const savingsDeposits = prior
+      .filter((t) => t.type === "transfer" && t.title.startsWith("Saved to"))
+      .reduce((s, t) => s + t.amount, 0);
+
+    const savingsWithdrawals = prior
+      .filter(
+        (t) => t.type === "transfer" && t.title.startsWith("Withdrawn from"),
+      )
+      .reduce((s, t) => s + t.amount, 0);
+
+    return savingsDeposits - savingsWithdrawals;
+  }, [transactions, upToMonth]);
+}

@@ -12,6 +12,7 @@ import { LendForm } from "../components/lends/LendForm";
 import {
   useTransactionsMulti,
   useRunningBalance,
+  useSavingsBalance,
   getScopeMonths,
   ViewScope,
 } from "../hooks/useTransactions";
@@ -23,6 +24,7 @@ export default function Dashboard() {
   const [activeDate, setActiveDate] = useState(new Date());
   const [scope, setScope] = useState<ViewScope>("month");
   const [lendFormOpen, setLendFormOpen] = useState(false);
+  const [showTotal, setShowTotal] = useState(false);
   const currentMonth = format(activeDate, "yyyy-MM");
 
   const scopeMonths = useMemo(
@@ -33,6 +35,11 @@ export default function Dashboard() {
   const { totalExpense, totalIncome, filtered } =
     useTransactionsMulti(scopeMonths);
   const runningBalance = useRunningBalance(currentMonth);
+  const savingsBalance = useSavingsBalance(currentMonth);
+
+  const displayBalance = showTotal
+    ? runningBalance + savingsBalance
+    : runningBalance;
 
   const { format: fmt } = useCurrency();
   const name = useAppStore((s) => s.settings.name);
@@ -114,15 +121,25 @@ export default function Dashboard() {
 
       {/* Stat cards */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-        <StatCard
-          label="Running Balance"
-          value={`${runningBalance < 0 ? "-" : ""}${fmt(Math.abs(runningBalance))}`}
-          sub={`Carry-forward up to ${format(activeDate, "MMM yyyy")}`}
-          accent={
-            runningBalance >= 0 ? "var(--color-dash)" : "var(--color-expense)"
-          }
-          icon={<Wallet size={18} />}
-        />
+        <div
+          onClick={() => setShowTotal((v) => !v)}
+          className="cursor-pointer select-none"
+          title="Click to view total savings"
+        >
+          <StatCard
+            label={showTotal ? "Total (Wallet + Savings)" : "Running Balance"}
+            value={`${displayBalance < 0 ? "-" : ""}${fmt(Math.abs(displayBalance))}`}
+            sub={
+              showTotal
+                ? `Total savings up to ${format(activeDate, "MMM yyyy")}`
+                : `Carry-forward up to ${format(activeDate, "MMM yyyy")}`
+            }
+            accent={
+              displayBalance >= 0 ? "var(--color-dash)" : "var(--color-expense)"
+            }
+            icon={<Wallet size={18} />}
+          />
+        </div>
         <StatCard
           label="Expenses"
           value={fmt(totalExpense)}
