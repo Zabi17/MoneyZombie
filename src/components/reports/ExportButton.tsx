@@ -35,12 +35,12 @@ export function ExportButton() {
         ].join(",");
       });
 
-    const csv = [headers.join(","), ...rows].join("\n");
-    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    const excel = [headers.join(","), ...rows].join("\n");
+    const blob = new Blob([excel], { type: "text/excel;charset=utf-8;" });
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
     link.href = url;
-    link.download = `MoneyZombie-export-${format(new Date(), "yyyy-MM-dd")}.csv`;
+    link.download = `MoneyZombie-export-${format(new Date(), "yyyy-MM-dd")}.excel`;
     link.click();
     URL.revokeObjectURL(url);
   };
@@ -56,7 +56,7 @@ export function ExportButton() {
       }}
     >
       <Download size={15} />
-      Export CSV
+      Export Excel
     </button>
   );
 }

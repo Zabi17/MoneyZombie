@@ -3,6 +3,36 @@ import Particles from "./Particles";
 import SplitText from "./SplitText";
 import { useAuth } from "../../hooks/useAuth";
 
+// In your public/landing page component
+export default function Landing() {
+  return (
+    <>
+      <title>MoneyZombie — Free Expense Manager & Budget Tracker</title>
+      <meta name="description" content="MoneyZombie is a free expense manager to track spending, set budgets, and grow savings pots. No spreadsheets, no fees." />
+      <link rel="canonical" href="https://money-zombie.vercel.app/" />
+      <meta property="og:title" content="MoneyZombie — Free Expense Manager" />
+      <meta property="og:description" content="Track expenses, budgets, and savings goals for free." />
+      <meta property="og:image" content="https://money-zombie.vercel.app/og-image.png" />
+      <meta property="og:url" content="https://money-zombie.vercel.app/" />
+      <meta name="twitter:card" content="summary_large_image" />
+      {/* rest of your landing UI */}
+    </>
+  );
+}
+
+const jsonLd = {
+  "@context": "https://schema.org",
+  "@type": "SoftwareApplication",
+  name: "MoneyZombie",
+  applicationCategory: "FinanceApplication",
+  operatingSystem: "Web",
+  offers: { "@type": "Offer", price: "0", priceCurrency: "USD" },
+  description: "Free expense manager and budget tracker with savings goals.",
+};
+
+// drop this in your landing component
+<script type="application/ld+json">{JSON.stringify(jsonLd)}</script>;
+
 export function LoginScreen() {
   const { signInWithGoogle } = useAuth();
   const [loading, setLoading] = useState(false);
@@ -120,3 +150,4 @@ export function LoginScreen() {
     </div>
   );
 }
+

@@ -1,0 +1,8 @@
+# public/robots.txt
+User-agent: *
+Allow: /
+Disallow: /dashboard
+Disallow: /transactions
+Disallow: /budgets
+Disallow: /settings
+Sitemap: https://money-zombie.vercel.app/sitemap.xml
