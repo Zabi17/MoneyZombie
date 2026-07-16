@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Drawer } from "vaul";
-import { Download, Loader2 } from "lucide-react";
+import { Download, Loader2, X, Check } from "lucide-react";
 import * as XLSX from "xlsx";
 import { useAppStore } from "../../store/useAppStore";
 import { useCurrency } from "../../hooks/useCurrency";
@@ -31,6 +31,7 @@ export function ExportButton() {
 
   const [open, setOpen] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
+  const [selectedPreset, setSelectedPreset] = useState<DateRange | null>(null);
   const [customStart, setCustomStart] = useState("");
   const [customEnd, setCustomEnd] = useState("");
 
@@ -66,6 +67,45 @@ export function ExportButton() {
     { label: "All Time", start: null, end: null },
   ];
 
+  const hasCustomInput = customStart !== "" || customEnd !== "";
+  const isCustomValid =
+    customStart !== "" && customEnd !== "" && customStart <= customEnd;
+
+  const selectPreset = (preset: DateRange) => {
+    setSelectedPreset(preset);
+    setCustomStart("");
+    setCustomEnd("");
+  };
+
+  const updateCustomStart = (value: string) => {
+    setSelectedPreset(null);
+    setCustomStart(value);
+  };
+
+  const updateCustomEnd = (value: string) => {
+    setSelectedPreset(null);
+    setCustomEnd(value);
+  };
+
+  const activeRange: DateRange | null = selectedPreset
+    ? selectedPreset
+    : isCustomValid
+      ? {
+          label: `${format(new Date(customStart), "MMM d")} – ${format(
+            new Date(customEnd),
+            "MMM d, yyyy",
+          )}`,
+          start: customStart,
+          end: customEnd,
+        }
+      : null;
+
+  const resetSelection = () => {
+    setSelectedPreset(null);
+    setCustomStart("");
+    setCustomEnd("");
+  };
+
   const inRange = (date: string, range: DateRange) => {
     if (range.start && date < range.start) return false;
     if (range.end && date > range.end) return false;
@@ -84,7 +124,10 @@ export function ExportButton() {
     }
   };
 
-  const runExport = async (range: DateRange) => {
+  const handleDownload = async () => {
+    if (!activeRange) return;
+    const range = activeRange;
+
     setOpen(false);
     setIsExporting(true);
     try {
@@ -242,23 +285,18 @@ export function ExportButton() {
       XLSX.writeFile(workbook, `MoneyZombie-export-${rangeSuffix}.xlsx`);
     } finally {
       setIsExporting(false);
+      resetSelection();
     }
   };
 
-  const handleCustomDownload = () => {
-    if (!customStart || !customEnd || customStart > customEnd) return;
-    runExport({
-      label: `${format(new Date(customStart), "MMM d")} – ${format(
-        new Date(customEnd),
-        "MMM d, yyyy",
-      )}`,
-      start: customStart,
-      end: customEnd,
-    });
-  };
-
   return (
-    <Drawer.Root open={open} onOpenChange={setOpen}>
+    <Drawer.Root
+      open={open}
+      onOpenChange={(next) => {
+        setOpen(next);
+        if (!next) resetSelection();
+      }}
+    >
       <Drawer.Trigger asChild>
         <button
           disabled={isExporting}
@@ -279,10 +317,14 @@ export function ExportButton() {
       </Drawer.Trigger>
 
       <Drawer.Portal>
-        <Drawer.Overlay className="fixed inset-0 bg-black/60 z-50" />
-        <Drawer.Content className="fixed inset-x-0 bottom-0 z-50 outline-none flex flex-col sm:inset-0 sm:items-center sm:justify-center">
+        <Drawer.Overlay
+          className="fixed inset-0 bg-black/40 z-50"
+          onClick={() => setOpen(false)}
+        />
+        <Drawer.Content className="fixed inset-x-0 bottom-0 z-50 outline-none flex flex-col sm:inset-0 sm:items-center sm:justify-center sm:pointer-events-none">
           <div
-            className="w-full flex flex-col rounded-t-2xl outline-none max-h-[85vh] sm:max-w-sm sm:max-h-[80vh] sm:rounded-2xl sm:shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+            className="w-full flex flex-col rounded-t-2xl outline-none max-h-[85vh] sm:max-w-sm sm:max-h-[80vh] sm:rounded-2xl sm:shadow-2xl sm:pointer-events-auto"
             style={{
               background: "var(--color-surface)",
               border: "1px solid var(--color-border)",
@@ -293,29 +335,42 @@ export function ExportButton() {
               style={{ background: "var(--color-border)" }}
             />
 
-            <div className="px-5 pt-4 pb-2">
+            <div className="flex items-center justify-between px-5 pt-4 pb-2">
               <Drawer.Title
                 className="text-base font-bold"
                 style={{ color: "var(--color-text-primary)" }}
               >
                 Download Excel
               </Drawer.Title>
+              <button
+                onClick={() => setOpen(false)}
+                className="p-1.5 rounded-full transition-opacity hover:opacity-70"
+                style={{ color: "var(--color-text-secondary)" }}
+                aria-label="Close"
+              >
+                <X size={18} />
+              </button>
             </div>
 
-            <div className="overflow-y-auto px-5 pb-6 flex flex-col gap-1.5">
-              {presets.map((preset) => (
-                <button
-                  key={preset.label}
-                  onClick={() => runExport(preset)}
-                  className="flex items-center justify-between px-4 py-3 rounded-xl text-sm font-medium transition-colors hover:opacity-90"
-                  style={{
-                    background: "var(--color-background)",
-                    color: "var(--color-text-primary)",
-                  }}
-                >
-                  {preset.label}
-                </button>
-              ))}
+            <div className="overflow-y-auto px-5 pb-2 flex flex-col gap-1.5">
+              {presets.map((preset) => {
+                const isActive = selectedPreset?.label === preset.label;
+                return (
+                  <button
+                    key={preset.label}
+                    onClick={() => selectPreset(preset)}
+                    className="flex items-center justify-between px-4 py-3 rounded-xl text-sm font-medium transition-colors"
+                    style={{
+                      border: isActive
+                        ? "2px solid var(--color-accent)"
+                        : "1px solid var(--color-border)"
+                    }}
+                  >
+                    {preset.label}
+                    {isActive && <Check size={16} />}
+                  </button>
+                );
+              })}
 
               <div
                 className="mt-3 pt-4"
@@ -331,12 +386,16 @@ export function ExportButton() {
                   <input
                     type="date"
                     value={customStart}
-                    onChange={(e) => setCustomStart(e.target.value)}
+                    onChange={(e) => updateCustomStart(e.target.value)}
                     className="flex-1 min-w-0 px-3 py-2.5 rounded-xl text-sm"
                     style={{
-                      background: "var(--color-background)",
+                      background: hasCustomInput
+                        ? "var(--color-accent)"
+                        : "var(--color-background)",
                       border: "1px solid var(--color-border)",
-                      color: "var(--color-text-primary)",
+                      color: hasCustomInput
+                        ? "var(--color-accent-foreground, white)"
+                        : "var(--color-text-primary)",
                     }}
                   />
                   <span style={{ color: "var(--color-text-secondary)" }}>
@@ -345,29 +404,47 @@ export function ExportButton() {
                   <input
                     type="date"
                     value={customEnd}
-                    onChange={(e) => setCustomEnd(e.target.value)}
+                    onChange={(e) => updateCustomEnd(e.target.value)}
                     className="flex-1 min-w-0 px-3 py-2.5 rounded-xl text-sm"
                     style={{
-                      background: "var(--color-background)",
+                      background: hasCustomInput
+                        ? "var(--color-accent)"
+                        : "var(--color-background)",
                       border: "1px solid var(--color-border)",
-                      color: "var(--color-text-primary)",
+                      color: hasCustomInput
+                        ? "var(--color-accent-foreground, white)"
+                        : "var(--color-text-primary)",
                     }}
                   />
                 </div>
-                <button
-                  onClick={handleCustomDownload}
-                  disabled={
-                    !customStart || !customEnd || customStart > customEnd
-                  }
-                  className="w-full mt-3 py-3 rounded-xl text-sm font-semibold disabled:opacity-40 disabled:cursor-not-allowed transition-opacity hover:opacity-80"
-                  style={{
-                    background: "var(--color-accent)",
-                    color: "var(--color-accent-foreground, white)",
-                  }}
-                >
-                  Download Custom Range
-                </button>
+                {hasCustomInput && !isCustomValid && (
+                  <p
+                    className="text-xs mt-2"
+                    style={{ color: "var(--color-expense, #e5484d)" }}
+                  >
+                    {customStart && customEnd
+                      ? "Start date must be before end date"
+                      : "Select both start and end dates"}
+                  </p>
+                )}
               </div>
+            </div>
+
+            <div
+              className="px-5 py-4"
+              style={{ borderTop: "1px solid var(--color-border)" }}
+            >
+              <button
+                onClick={handleDownload}
+                disabled={!activeRange}
+                className="w-full py-3 rounded-xl text-sm font-semibold disabled:opacity-40 disabled:cursor-not-allowed transition-opacity hover:opacity-80"
+                style={{
+                  background: "var(--color-accent)",
+                  color: "var(--color-accent-foreground, white)",
+                }}
+              >
+                Download Excel
+              </button>
             </div>
           </div>
         </Drawer.Content>

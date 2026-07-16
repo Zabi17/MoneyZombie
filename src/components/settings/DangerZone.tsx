@@ -89,6 +89,7 @@ export function DangerZone() {
             Deletes only the Transactions
           </p>
         </div>
+        <hr />
 
         <div>
           <button
@@ -108,7 +109,8 @@ export function DangerZone() {
             className="flex text-xs mt-1 px-1 "
             style={{ color: "var(--color-text-muted)" }}
           >
-            <AlertTriangle size={15} /> Wipes all data including budgets, categories, savings & lends.
+            <AlertTriangle size={15} /> Wipes all data including budgets,
+            categories, savings & lends.
           </p>
         </div>
       </div>
