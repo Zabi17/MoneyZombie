@@ -9,7 +9,9 @@ import {
   SavingsPot,
   SavingsTransaction,
   Lend,
+  LendPayment,
 } from "../types";
+
 import { DEFAULT_CATEGORIES, DEFAULT_SETTINGS } from "../constants/defaults";
 import { supabase } from "../lib/supabase";
 
@@ -23,6 +25,7 @@ type AppStore = {
   savingsPots: SavingsPot[];
   savingsTransactions: SavingsTransaction[];
   lends: Lend[];
+  lendPayments: LendPayment[];
   loadState: LoadState;
 
   loadAll: (userId: string) => Promise<void>;
@@ -91,11 +94,23 @@ type AppStore = {
     data: Partial<
       Pick<Lend, "title" | "amount" | "categoryId" | "note" | "lentOn">
     >,
+  ) => Promise<boolean>;
+  addLendPayment: (
+    lendId: string,
+    amount: number,
+    paidOn: string,
+    userId: string,
   ) => Promise<void>;
-  settleLend: (lendId: string) => Promise<void>;
-  undoSettleLend: (lendId: string) => Promise<void>;
+  removeLendPayment: (paymentId: string) => Promise<void>;
   deleteLend: (lendId: string) => Promise<void>;
 };
+
+export const getLendPaidTotal = (payments: LendPayment[], lendId: string) =>
+  Math.round(
+    payments
+      .filter((p) => p.lendId === lendId)
+      .reduce((s, p) => s + p.amount, 0) * 100,
+  ) / 100;
 
 export const useAppStore = create<AppStore>()((set, get) => ({
   transactions: [],
@@ -105,6 +120,7 @@ export const useAppStore = create<AppStore>()((set, get) => ({
   savingsPots: [],
   savingsTransactions: [],
   lends: [],
+  lendPayments: [],
   loadState: "idle",
 
   reset: () =>
@@ -116,6 +132,7 @@ export const useAppStore = create<AppStore>()((set, get) => ({
       savingsPots: [],
       savingsTransactions: [],
       lends: [],
+      lendPayments: [],
       loadState: "idle",
     }),
 
@@ -123,32 +140,45 @@ export const useAppStore = create<AppStore>()((set, get) => ({
   loadAll: async (userId: string) => {
     set({ loadState: "loading" });
     try {
-      const [txRes, catRes, budRes, setRes, potsRes, savTxRes, lendsRes] =
-        await Promise.all([
-          supabase
-            .from("transactions")
-            .select("*")
-            .eq("user_id", userId)
-            .order("date", { ascending: false }),
-          supabase.from("categories").select("*").eq("user_id", userId),
-          supabase.from("budgets").select("*").eq("user_id", userId),
-          supabase.from("settings").select("*").eq("user_id", userId).single(),
-          supabase
-            .from("savings_pots")
-            .select("*")
-            .eq("user_id", userId)
-            .order("created_at", { ascending: false }),
-          supabase
-            .from("savings_transactions")
-            .select("*")
-            .eq("user_id", userId)
-            .order("created_at", { ascending: false }),
-          supabase
-            .from("lends")
-            .select("*")
-            .eq("user_id", userId)
-            .order("lent_on", { ascending: false }),
-        ]);
+      const [
+        txRes,
+        catRes,
+        budRes,
+        setRes,
+        potsRes,
+        savTxRes,
+        lendsRes,
+        lendPayRes,
+      ] = await Promise.all([
+        supabase
+          .from("transactions")
+          .select("*")
+          .eq("user_id", userId)
+          .order("date", { ascending: false }),
+        supabase.from("categories").select("*").eq("user_id", userId),
+        supabase.from("budgets").select("*").eq("user_id", userId),
+        supabase.from("settings").select("*").eq("user_id", userId).single(),
+        supabase
+          .from("savings_pots")
+          .select("*")
+          .eq("user_id", userId)
+          .order("created_at", { ascending: false }),
+        supabase
+          .from("savings_transactions")
+          .select("*")
+          .eq("user_id", userId)
+          .order("created_at", { ascending: false }),
+        supabase
+          .from("lends")
+          .select("*")
+          .eq("user_id", userId)
+          .order("lent_on", { ascending: false }),
+        supabase
+          .from("lend_payments")
+          .select("*")
+          .eq("user_id", userId)
+          .order("paid_on", { ascending: false }),
+      ]);
 
       const transactions: Transaction[] = (txRes.data ?? []).map((r) => ({
         id: r.id,
@@ -255,7 +285,16 @@ export const useAppStore = create<AppStore>()((set, get) => ({
         lentOn: r.lent_on,
         settledOn: r.settled_on ?? null,
         walletDebitTxId: r.wallet_debit_tx_id,
-        walletCreditTxId: r.wallet_credit_tx_id ?? null,
+        createdAt: r.created_at,
+      }));
+
+      const lendPayments: LendPayment[] = (lendPayRes.data ?? []).map((r) => ({
+        id: r.id,
+        userId: r.user_id,
+        lendId: r.lend_id,
+        amount: Number(r.amount),
+        paidOn: r.paid_on,
+        txId: r.tx_id,
         createdAt: r.created_at,
       }));
 
@@ -267,6 +306,7 @@ export const useAppStore = create<AppStore>()((set, get) => ({
         savingsPots,
         savingsTransactions,
         lends,
+        lendPayments,
         loadState: "ready",
       });
     } catch (e) {
@@ -808,7 +848,6 @@ export const useAppStore = create<AppStore>()((set, get) => ({
         lentOn: data.lentOn,
         settledOn: null,
         walletDebitTxId: debitTxId,
-        walletCreditTxId: null,
         createdAt,
       };
 
@@ -840,7 +879,6 @@ export const useAppStore = create<AppStore>()((set, get) => ({
           lent_on: data.lentOn,
           settled_on: null,
           wallet_debit_tx_id: debitTxId,
-          wallet_credit_tx_id: null,
           created_at: createdAt,
         }),
       ]);
@@ -854,36 +892,29 @@ export const useAppStore = create<AppStore>()((set, get) => ({
   updateLend: async (id, data) => {
     try {
       const lend = get().lends.find((l) => l.id === id);
-      if (!lend) return;
+      if (!lend) return false;
 
-      const amountChanged =
-        data.amount !== undefined && data.amount !== lend.amount;
+      if (data.amount !== undefined) {
+        const paidSoFar = getLendPaidTotal(get().lendPayments, id);
+        if (data.amount < paidSoFar) {
+          toast.error(`Can't set amount below ₹${paidSoFar} already paid`);
+          return false;
+        }
+      }
 
-      // Optimistic update on lend record
       set((s) => ({
         lends: s.lends.map((l) => (l.id === id ? { ...l, ...data } : l)),
-        transactions: s.transactions.map((t) => {
-          // Update the debit tx title/amount/date if lent details changed
-          if (t.id === lend.walletDebitTxId) {
-            return {
-              ...t,
-              title: `Lent · ${data.title ?? lend.title}`,
-              amount: data.amount ?? lend.amount,
-              date: data.lentOn ?? lend.lentOn,
-              categoryId: data.categoryId ?? lend.categoryId,
-            };
-          }
-          // Update the credit tx title if exists
-          if (t.id === lend.walletCreditTxId) {
-            return {
-              ...t,
-              title: `Returned · ${data.title ?? lend.title}`,
-              amount: data.amount ?? lend.amount,
-              categoryId: data.categoryId ?? lend.categoryId,
-            };
-          }
-          return t;
-        }),
+        transactions: s.transactions.map((t) =>
+          t.id === lend.walletDebitTxId
+            ? {
+                ...t,
+                title: `Lent · ${data.title ?? lend.title}`,
+                amount: data.amount ?? lend.amount,
+                date: data.lentOn ?? lend.lentOn,
+                categoryId: data.categoryId ?? lend.categoryId,
+              }
+            : t,
+        ),
       }));
 
       await Promise.all([
@@ -899,7 +930,6 @@ export const useAppStore = create<AppStore>()((set, get) => ({
             ...(data.lentOn !== undefined && { lent_on: data.lentOn }),
           })
           .eq("id", id),
-
         supabase
           .from("transactions")
           .update({
@@ -909,113 +939,140 @@ export const useAppStore = create<AppStore>()((set, get) => ({
             category_id: data.categoryId ?? lend.categoryId,
           })
           .eq("id", lend.walletDebitTxId),
-
-        ...(lend.walletCreditTxId
-          ? [
-              supabase
-                .from("transactions")
-                .update({
-                  title: `Returned · ${data.title ?? lend.title}`,
-                  amount: data.amount ?? lend.amount,
-                  category_id: data.categoryId ?? lend.categoryId,
-                })
-                .eq("id", lend.walletCreditTxId),
-            ]
-          : []),
       ]);
-      toast.success("Lend Updated");
+
+      toast.success("Lend updated");
+      return true;
     } catch (error) {
       toast.error("Failed to update lend");
-      console.log(error);
+      console.error(error);
+      return false;
     }
   },
 
-  settleLend: async (lendId) => {
+  addLendPayment: async (lendId, amount, paidOn, userId) => {
     try {
       const lend = get().lends.find((l) => l.id === lendId);
-      if (!lend || lend.settledOn) return;
+      if (!lend) return;
 
-      const creditTxId = nanoid();
-      const settledOn = new Date().toISOString().slice(0, 10);
+      if (amount <= 0) {
+        toast.error("Enter a valid amount");
+        return;
+      }
+
+      const paidSoFar = getLendPaidTotal(get().lendPayments, lendId);
+      const remaining = Math.round((lend.amount - paidSoFar) * 100) / 100;
+
+      if (amount > remaining) {
+        toast.error(`Amount exceeds remaining ₹${remaining}`);
+        return;
+      }
+
+      const paymentId = nanoid();
+      const txId = nanoid();
       const createdAt = new Date().toISOString();
+      const newTotal = Math.round((paidSoFar + amount) * 100) / 100;
+      const isNowSettled = newTotal >= lend.amount;
 
       const creditTx: Transaction = {
-        id: creditTxId,
+        id: txId,
         title: `Returned · ${lend.title}`,
-        amount: lend.amount,
-        type: "transfer", // hidden from income stats — it's not real income
+        amount,
+        type: "transfer",
         categoryId: lend.categoryId,
-        date: settledOn,
+        date: paidOn,
+        createdAt,
+      };
+
+      const payment: LendPayment = {
+        id: paymentId,
+        userId,
+        lendId,
+        amount,
+        paidOn,
+        txId,
         createdAt,
       };
 
       // Optimistic
       set((s) => ({
+        transactions: [creditTx, ...s.transactions],
+        lendPayments: [payment, ...s.lendPayments],
         lends: s.lends.map((l) =>
           l.id === lendId
-            ? { ...l, settledOn, walletCreditTxId: creditTxId }
+            ? { ...l, settledOn: isNowSettled ? paidOn : null }
             : l,
         ),
-        transactions: [creditTx, ...s.transactions],
       }));
 
       await Promise.all([
         supabase.from("transactions").insert({
-          id: creditTxId,
-          user_id: lend.userId,
+          id: txId,
+          user_id: userId,
           title: creditTx.title,
-          amount: lend.amount,
+          amount,
           type: "transfer",
           category_id: lend.categoryId,
-          date: settledOn,
+          date: paidOn,
           note: null,
+          created_at: createdAt,
+        }),
+        supabase.from("lend_payments").insert({
+          id: paymentId,
+          user_id: userId,
+          lend_id: lendId,
+          amount,
+          paid_on: paidOn,
+          tx_id: txId,
           created_at: createdAt,
         }),
         supabase
           .from("lends")
-          .update({
-            settled_on: settledOn,
-            wallet_credit_tx_id: creditTxId,
-          })
+          .update({ settled_on: isNowSettled ? paidOn : null })
           .eq("id", lendId),
       ]);
-      toast.success("Marked as returned");
+
+      toast.success(
+        isNowSettled
+          ? "Fully settled 🎉"
+          : `₹${amount} logged · ₹${Math.round((lend.amount - newTotal) * 100) / 100} remaining`,
+      );
     } catch (error) {
-      toast.error("Failed to mark lend");
-      console.log(error);
+      toast.error("Failed to log payment");
+      console.error(error);
     }
   },
 
-  undoSettleLend: async (lendId) => {
+  removeLendPayment: async (paymentId) => {
     try {
-      const lend = get().lends.find((l) => l.id === lendId);
-      if (!lend || !lend.settledOn || !lend.walletCreditTxId) return;
-
-      const creditTxId = lend.walletCreditTxId;
+      const payment = get().lendPayments.find((p) => p.id === paymentId);
+      if (!payment) return;
+      const lend = get().lends.find((l) => l.id === payment.lendId);
 
       // Optimistic
       set((s) => ({
+        transactions: s.transactions.filter((t) => t.id !== payment.txId),
+        lendPayments: s.lendPayments.filter((p) => p.id !== paymentId),
         lends: s.lends.map((l) =>
-          l.id === lendId
-            ? { ...l, settledOn: null, walletCreditTxId: null }
-            : l,
+          l.id === payment.lendId ? { ...l, settledOn: null } : l,
         ),
-        transactions: s.transactions.filter((t) => t.id !== creditTxId),
       }));
 
       await Promise.all([
-        supabase.from("transactions").delete().eq("id", creditTxId),
+        supabase.from("transactions").delete().eq("id", payment.txId),
+        supabase.from("lend_payments").delete().eq("id", paymentId),
         supabase
           .from("lends")
-          .update({
-            settled_on: null,
-            wallet_credit_tx_id: null,
-          })
-          .eq("id", lendId),
+          .update({ settled_on: null })
+          .eq("id", payment.lendId),
       ]);
-      toast.success("Marked as un-settled");
+
+      toast.warning(
+        lend ? `Payment removed from "${lend.title}"` : "Payment removed",
+      );
     } catch (error) {
-      toast.error("Failed to undo lend");
+      toast.error("Failed to remove payment");
+      console.error(error);
     }
   },
 
@@ -1024,14 +1081,17 @@ export const useAppStore = create<AppStore>()((set, get) => ({
       const lend = get().lends.find((l) => l.id === lendId);
       if (!lend) return;
 
+      const relatedPayments = get().lendPayments.filter(
+        (p) => p.lendId === lendId,
+      );
       const txIdsToDelete = [
         lend.walletDebitTxId,
-        lend.walletCreditTxId,
-      ].filter(Boolean) as string[];
+        ...relatedPayments.map((p) => p.txId),
+      ];
 
-      // Optimistic
       set((s) => ({
         lends: s.lends.filter((l) => l.id !== lendId),
+        lendPayments: s.lendPayments.filter((p) => p.lendId !== lendId),
         transactions: s.transactions.filter(
           (t) => !txIdsToDelete.includes(t.id),
         ),
@@ -1039,13 +1099,15 @@ export const useAppStore = create<AppStore>()((set, get) => ({
 
       await Promise.all([
         supabase.from("lends").delete().eq("id", lendId),
-        ...txIdsToDelete.map((id) =>
-          supabase.from("transactions").delete().eq("id", id),
+        supabase.from("lend_payments").delete().eq("lend_id", lendId),
+        ...txIdsToDelete.map((tid) =>
+          supabase.from("transactions").delete().eq("id", tid),
         ),
       ]);
-      toast.warning("Lend Deleted");
+      toast.warning("Lend deleted");
     } catch (error) {
       toast.error("Failed to delete lend");
+      console.error(error);
     }
   },
 }));

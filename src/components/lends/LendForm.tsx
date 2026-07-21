@@ -51,7 +51,7 @@ export function LendForm({ open, onClose, editing }: Props) {
   const expenseCategories = categories.filter((c) => c.type === "expense");
   const set = (k: string, v: string) => setForm((f) => ({ ...f, [k]: v }));
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (!form.title.trim()) return setError("Title is required");
     if (!form.amount || isNaN(Number(form.amount)) || Number(form.amount) <= 0)
       return setError("Enter a valid amount");
@@ -59,13 +59,14 @@ export function LendForm({ open, onClose, editing }: Props) {
     if (!form.date) return setError("Pick a date");
 
     if (editing) {
-      updateLend(editing.id, {
+      const ok = await updateLend(editing.id, {
         title: form.title.trim(),
         amount: Number(form.amount),
         categoryId: form.categoryId,
         note: form.note.trim() || undefined,
         lentOn: form.date,
       });
+      if (!ok) return; // keep sheet open, toast already shown by store
     } else {
       addLend(
         {

@@ -49,6 +49,18 @@ export type Transaction = {
   createdAt: string;
 };
 
+
+
+export type LendPayment = {
+  id: string;
+  userId: string;
+  lendId: string;
+  amount: number;
+  paidOn: string; 
+  txId: string;
+  createdAt: string;
+};
+
 export type Lend = {
   id: string;
   userId: string;
@@ -56,10 +68,9 @@ export type Lend = {
   amount: number;
   categoryId: string;
   note?: string;
-  lentOn: string; // date string "yyyy-MM-dd"
+  lentOn: string; 
   settledOn?: string | null;
   walletDebitTxId: string;
-  walletCreditTxId?: string | null;
   createdAt: string;
 };
 

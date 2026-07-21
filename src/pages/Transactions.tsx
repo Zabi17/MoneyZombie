@@ -8,27 +8,18 @@ import { DeleteDialog } from "../components/transactions/DeleteDialog";
 import { FilterBar } from "../components/transactions/FilterBar";
 import { LendForm } from "../components/lends/LendForm";
 import { LendCard } from "../components/lends/LendCard";
+import { LendPaymentDrawer } from "../components/lends/LendPaymentDrawer";
 import { format, isThisYear } from "date-fns";
 import { useCurrency } from "@/hooks/useCurrency";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
 
 export default function Transactions() {
   const transactions = useAppStore((s) => s.transactions);
   const categories = useAppStore((s) => s.categories);
   const lends = useAppStore((s) => s.lends);
+  const lendPayments = useAppStore((s) => s.lendPayments);
   const deleteTransaction = useAppStore((s) => s.deleteTransaction);
   const deleteLend = useAppStore((s) => s.deleteLend);
-  const settleLend = useAppStore((s) => s.settleLend);
-  const undoSettleLend = useAppStore((s) => s.undoSettleLend);
+  const removeLendPayment = useAppStore((s) => s.removeLendPayment);
 
   const [txFormOpen, setTxFormOpen] = useState(false);
   const [lendFormOpen, setLendFormOpen] = useState(false);
@@ -38,13 +29,11 @@ export default function Transactions() {
   const [deletingLendId, setDeletingLendId] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const [catFilter, setCatFilter] = useState("");
-  const [typeFilter, setTypeFilter] = useState<
-  TransactionType | "all" | "lends"
-  >("all");
+  const [typeFilter, setTypeFilter] = useState<TransactionType | "all" | "lends">("all");
 
-  // Confirmation state for settle / undo actions
-  const [settlingLend, setSettlingLend] = useState<Lend | null>(null);
-  const [undoingLend, setUndoingLend] = useState<Lend | null>(null);
+  // Payment drawer state (replaces old settle/undo confirm state)
+  const [payingLend, setPayingLend] = useState<Lend | null>(null);
+  const [payDrawerOpen, setPayDrawerOpen] = useState(false);
 
   const isLendsView = typeFilter === "lends";
   const { format: fmt } = useCurrency();
@@ -97,16 +86,30 @@ export default function Transactions() {
     return format(d, isThisYear(d) ? "MMMM d" : "MMMM d, yyyy");
   };
 
+  // A lend-linked transaction is now: the debit tx, OR any payment tx.
+  const findLendForTx = (txId: string): Lend | undefined => {
+    const byDebit = lends.find((l) => l.walletDebitTxId === txId);
+    if (byDebit) return byDebit;
+    const payment = lendPayments.find((p) => p.txId === txId);
+    if (payment) return lends.find((l) => l.id === payment.lendId);
+    return undefined;
+  };
+
   const handleTxEdit = (tx: Transaction) => {
     const isLendTx =
       tx.title.startsWith("Lent ·") || tx.title.startsWith("Returned ·");
     if (isLendTx) {
-      const linked = lends.find(
-        (l) => l.walletDebitTxId === tx.id || l.walletCreditTxId === tx.id,
-      );
+      const linked = findLendForTx(tx.id);
       if (linked) {
-        setEditingLend(linked);
-        setLendFormOpen(true);
+        // Debit tx → edit the lend itself. Payment tx → open payment drawer.
+        const isDebit = linked.walletDebitTxId === tx.id;
+        if (isDebit) {
+          setEditingLend(linked);
+          setLendFormOpen(true);
+        } else {
+          setPayingLend(linked);
+          setPayDrawerOpen(true);
+        }
         return;
       }
     }
@@ -118,11 +121,17 @@ export default function Transactions() {
     const isLendTx =
       tx.title.startsWith("Lent ·") || tx.title.startsWith("Returned ·");
     if (isLendTx) {
-      const linked = lends.find(
-        (l) => l.walletDebitTxId === tx.id || l.walletCreditTxId === tx.id,
-      );
+      const linked = findLendForTx(tx.id);
       if (linked) {
-        setDeletingLendId(linked.id);
+        const isDebit = linked.walletDebitTxId === tx.id;
+        if (isDebit) {
+          // Deleting the original lend tx deletes the whole lend
+          setDeletingLendId(linked.id);
+        } else {
+          // Deleting a payment tx removes just that payment
+          const payment = lendPayments.find((p) => p.txId === tx.id);
+          if (payment) removeLendPayment(payment.id);
+        }
         return;
       }
     }
@@ -240,14 +249,15 @@ export default function Transactions() {
               <LendCard
                 key={lend.id}
                 lend={lend}
-                onSettle={(id) => {
+                payments={lendPayments.filter((p) => p.lendId === lend.id)}
+                onLogPayment={(id) => {
                   const l = lends.find((x) => x.id === id);
-                  if (l) setSettlingLend(l);
+                  if (l) {
+                    setPayingLend(l);
+                    setPayDrawerOpen(true);
+                  }
                 }}
-                onUndo={(id) => {
-                  const l = lends.find((x) => x.id === id);
-                  if (l) setUndoingLend(l);
-                }}
+                onRemovePayment={removeLendPayment}
                 onEdit={(id) => {
                   const l = lends.find((x) => x.id === id);
                   if (l) {
@@ -339,7 +349,22 @@ export default function Transactions() {
         editing={editingLend}
       />
 
-      {/* Delete tx confirm — unchanged */}
+      {/* Payment drawer — replaces old settle/undo AlertDialogs */}
+      <LendPaymentDrawer
+        open={payDrawerOpen}
+        onClose={() => {
+          setPayDrawerOpen(false);
+          setPayingLend(null);
+        }}
+        lend={payingLend}
+        payments={
+          payingLend
+            ? lendPayments.filter((p) => p.lendId === payingLend.id)
+            : []
+        }
+      />
+
+      {/* Delete tx confirm */}
       <DeleteDialog
         open={!!deleting}
         title={deleting?.title}
@@ -350,7 +375,7 @@ export default function Transactions() {
         }}
       />
 
-      {/* Delete lend confirm — unchanged */}
+      {/* Delete lend confirm */}
       <DeleteDialog
         open={!!deletingLendId}
         title="this lend and its wallet transactions"
@@ -360,116 +385,6 @@ export default function Transactions() {
           setDeletingLendId(null);
         }}
       />
-
-      {/* Mark as settled confirm — shadcn AlertDialog */}
-      <AlertDialog
-        open={!!settlingLend}
-        onOpenChange={(open) => !open && setSettlingLend(null)}
-      >
-        <AlertDialogContent
-          style={{
-            background: "var(--color-surface)",
-            border: "1px solid var(--color-border)",
-          }}
-        >
-          <AlertDialogHeader>
-            <AlertDialogTitle
-              style={{
-                fontFamily: "var(--font-display)",
-                color: "var(--color-text-primary)",
-              }}
-            >
-              Mark as settled?
-            </AlertDialogTitle>
-            <AlertDialogDescription
-              style={{ color: "var(--color-text-muted)" }}
-            >
-              {settlingLend
-                ? `"${settlingLend.title}" (${fmt(settlingLend.amount)}) will be marked as settled.`
-                : ""}
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel
-              onClick={() => setSettlingLend(null)}
-              style={{
-                background: "transparent",
-                border: "1px solid var(--color-border)",
-                color: "var(--color-text-secondary)",
-              }}
-            >
-              Cancel
-            </AlertDialogCancel>
-            <AlertDialogAction
-              onClick={() => {
-                if (settlingLend) settleLend(settlingLend.id);
-                setSettlingLend(null);
-              }}
-              style={{
-                background: "var(--color-accent)",
-                color: "black",
-              }}
-            >
-              Settle
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-
-      {/* Undo settled confirm — shadcn AlertDialog */}
-      <AlertDialog
-        open={!!undoingLend}
-        onOpenChange={(open) => !open && setUndoingLend(null)}
-      >
-        <AlertDialogContent
-          style={{
-            background: "var(--color-surface)",
-            border: "1px solid var(--color-border)",
-          }}
-        >
-          <AlertDialogHeader>
-            <AlertDialogTitle
-              style={{
-                fontFamily: "var(--font-display)",
-                color: "var(--color-text-primary)",
-              }}
-            >
-              Undo settlement?
-            </AlertDialogTitle>
-            <AlertDialogDescription
-              style={{ color: "var(--color-text-muted)" }}
-            >
-              {undoingLend
-                ? `"${undoingLend.title}" will be marked as pending again.`
-                : ""}
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel
-              onClick={() => setUndoingLend(null)}
-              style={{
-                background: "transparent",
-                border: "1px solid var(--color-border)",
-                color: "var(--color-text-secondary)",
-              }}
-            >
-              Cancel
-            </AlertDialogCancel>
-            <AlertDialogAction
-              onClick={() => {
-                if (undoingLend) undoSettleLend(undoingLend.id);
-                setUndoingLend(null);
-              }}
-              style={{
-                background: "var(--color-expense)",
-                color: "white",
-              }}
-            >
-              Undo
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
     </div>
   );
 }
