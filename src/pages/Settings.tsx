@@ -200,7 +200,17 @@ export default function Settings() {
         className="text-center text-xs pb-4"
         style={{ color: "var(--color-text-muted)" }}
       >
-        MoneyZombie · Your data is private and secure <br /> Follow me on{" "}
+        MoneyZombie · Your data is private and secure |{" "}
+        <a
+          href="/terms"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="underline hover:text-accent"
+        >
+          Terms & Conditions
+        </a>
+        <br /> 
+        Follow me on{" "}
         <a
           href="https://linkedin.com/in/zabiahmed3717"
           target="_blank"
