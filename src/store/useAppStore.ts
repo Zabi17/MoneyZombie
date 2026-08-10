@@ -58,6 +58,7 @@ type AppStore = {
   ) => Promise<void>;
   updatePot: (id: string, p: Partial<SavingsPot>) => Promise<void>;
   deletePot: (id: string) => Promise<void>;
+  deletePotWithWithdrawal: (id: string, userId: string) => Promise<void>;
   depositToPot: (
     potId: string,
     amount: number,
@@ -573,8 +574,17 @@ export const useAppStore = create<AppStore>()((set, get) => ({
     }
   },
 
+  // ── FIX: refuse to delete a pot that still holds money ──
   deletePot: async (id) => {
     try {
+      const pot = get().savingsPots.find((p) => p.id === id);
+      const balance = pot ? Math.round(pot.currentAmount * 100) / 100 : 0;
+
+      if (balance > 0) {
+        toast.error("Withdraw all funds before deleting this pot");
+        return;
+      }
+
       set((s) => ({
         savingsPots: s.savingsPots.filter((p) => p.id !== id),
         savingsTransactions: s.savingsTransactions.filter(
@@ -585,6 +595,28 @@ export const useAppStore = create<AppStore>()((set, get) => ({
       toast.warning("Pot deleted");
     } catch (error) {
       toast.error("Failed to delete pot");
+      console.error(error);
+    }
+  },
+
+  // ── NEW: withdraws remaining balance back to wallet, then deletes ──
+  deletePotWithWithdrawal: async (id, userId) => {
+    try {
+      const pot = get().savingsPots.find((p) => p.id === id);
+      if (!pot) return;
+
+      const balance = Math.round(pot.currentAmount * 100) / 100;
+      if (balance > 0) {
+        await get().withdrawFromPot(
+          id,
+          balance,
+          "Pot deleted — full withdrawal",
+          userId,
+        );
+      }
+      await get().deletePot(id);
+    } catch (error) {
+      toast.error("Failed to withdraw and delete pot");
       console.error(error);
     }
   },
@@ -677,11 +709,18 @@ export const useAppStore = create<AppStore>()((set, get) => ({
 
   withdrawFromPot: async (potId, amount, note, userId) => {
     try {
+      const pot = get().savingsPots.find((p) => p.id === potId);
+
+      // FIX: guard against withdrawing more than the pot holds
+      if (pot && amount > pot.currentAmount) {
+        toast.error("Withdrawal exceeds pot balance");
+        return;
+      }
+
       const id = nanoid();
       const txId = nanoid();
       const createdAt = new Date().toISOString();
       const date = createdAt.slice(0, 10);
-      const pot = get().savingsPots.find((p) => p.id === potId);
 
       set((s) => ({
         savingsPots: s.savingsPots.map((p) =>

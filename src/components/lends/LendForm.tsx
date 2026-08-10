@@ -124,7 +124,7 @@ export function LendForm({ open, onClose, editing }: Props) {
             <input
               className={inputClass}
               style={inputStyle}
-              placeholder="e.g. Lent Ahmed for lunch"
+              placeholder="Who you lent to?"
               value={form.title}
               onChange={(e) => set("title", e.target.value)}
             />

@@ -191,6 +191,18 @@ export function AddPotSheet({ open, onClose }: Props) {
                 />
               </div>
 
+              {error && (
+                <p
+                  className="text-xs font-medium px-3 py-2 rounded-lg"
+                  style={{
+                    background: "var(--color-expense)18",
+                    color: "var(--color-expense)",
+                  }}
+                >
+                  {error}
+                </p>
+              )}
+
               {/* Icon picker */}
               <div>
                 <label
@@ -361,18 +373,6 @@ export function AddPotSheet({ open, onClose }: Props) {
                     </span>
                   </button>
                 </>
-              )}
-
-              {error && (
-                <p
-                  className="text-xs font-medium px-3 py-2 rounded-lg"
-                  style={{
-                    background: "var(--color-expense)18",
-                    color: "var(--color-expense)",
-                  }}
-                >
-                  {error}
-                </p>
               )}
             </div>
           </div>

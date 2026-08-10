@@ -32,6 +32,7 @@ export function PotDrawer({ pot, onClose, savingsTransactions }: Props) {
   const transferBetweenPots = useAppStore((s) => s.transferBetweenPots);
   const deletePot = useAppStore((s) => s.deletePot);
   const savingsPots = useAppStore((s) => s.savingsPots);
+  const deletePotWithWithdrawal = useAppStore((s) => s.deletePotWithWithdrawal);
 
   const [action, setAction] = useState<Action>(null);
   const [amount, setAmount] = useState("");
@@ -150,7 +151,7 @@ export function PotDrawer({ pot, onClose, savingsTransactions }: Props) {
     <Sheet open={!!pot} onOpenChange={(v) => !v && handleClose()}>
       <SheetContent
         side="bottom"
-        className="rounded-t-3xl px-4 pb-8 pt-6"
+        className="rounded-t-3xl px-4 pb-8 pt-6 lg:w-150 align-center lg:mx-auto lg:rounded-3xl lg:pt-8"
         style={{
           background: "var(--color-surface)",
           border: "none",
@@ -557,13 +558,19 @@ export function PotDrawer({ pot, onClose, savingsTransactions }: Props) {
               style={{ color: "var(--color-expense)" }}
             >
               Are you sure you want to delete the:{" "}
-              <span
-                style={{ fontFamily: "var(--font-display)" }}
-                className="text-green-500"
-              >
+              <span className="text-green-500">
                 {pot.name}
               </span>{" "}
-              pot ? This action can't be undone.
+              pot?
+              <br/>
+              {pot.currentAmount > 0 && (
+                <>
+                  {" "}
+                  This will withdraw <span className="text-income">{fmt(pot.currentAmount)}</span> back
+                  to your wallet, then delete the pot.
+                </>
+              )}{" "}
+              This action can't be undone.
             </p>
             <div className="flex gap-2">
               <button
@@ -578,8 +585,9 @@ export function PotDrawer({ pot, onClose, savingsTransactions }: Props) {
                 Cancel
               </button>
               <button
-                onClick={() => {
-                  deletePot(pot.id);
+                onClick={async () => {
+                  if (!user) return;
+                  await deletePotWithWithdrawal(pot.id, user.id);
                   handleClose();
                 }}
                 className="flex-1 py-2 rounded-xl text-xs font-semibold transition-opacity hover:opacity-70"
@@ -588,7 +596,7 @@ export function PotDrawer({ pot, onClose, savingsTransactions }: Props) {
                   color: "white",
                 }}
               >
-                Yes, delete
+                {pot.currentAmount > 0 ? "Withdraw & Delete" : "Delete"}
               </button>
             </div>
           </div>
