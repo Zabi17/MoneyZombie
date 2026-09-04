@@ -1,5 +1,5 @@
 import { useState, type ElementType } from "react";
-import { Sheet, SheetContent, SheetHeader, SheetTitle } from "../ui/sheet";
+import { Drawer } from "vaul";
 import { SavingsPot, SavingsTransaction } from "../../types";
 import { useCurrency } from "../../hooks/useCurrency";
 import { useAppStore } from "../../store/useAppStore";
@@ -30,7 +30,6 @@ export function PotDrawer({ pot, onClose, savingsTransactions }: Props) {
   const depositToPot = useAppStore((s) => s.depositToPot);
   const withdrawFromPot = useAppStore((s) => s.withdrawFromPot);
   const transferBetweenPots = useAppStore((s) => s.transferBetweenPots);
-  const deletePot = useAppStore((s) => s.deletePot);
   const savingsPots = useAppStore((s) => s.savingsPots);
   const deletePotWithWithdrawal = useAppStore((s) => s.deletePotWithWithdrawal);
 
@@ -42,6 +41,7 @@ export function PotDrawer({ pot, onClose, savingsTransactions }: Props) {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   const reset = () => {
     setAction(null);
@@ -148,460 +148,500 @@ export function PotDrawer({ pot, onClose, savingsTransactions }: Props) {
   };
 
   return (
-    <Sheet open={!!pot} onOpenChange={(v) => !v && handleClose()}>
-      <SheetContent
-        side="bottom"
-        className="rounded-t-3xl px-4 pb-8 pt-6 lg:w-150 align-center lg:mx-auto lg:rounded-3xl lg:pt-8"
-        style={{
-          background: "var(--color-surface)",
-          border: "none",
-          maxHeight: "92svh",
-          overflowY: "auto",
-        }}
-      >
-        <SheetHeader className="mb-5">
-          <SheetTitle
-            className="flex items-center gap-3"
-            style={{
-              fontFamily: "var(--font-display)",
-              color: "var(--color-text-primary)",
-            }}
-          >
-            <div
-              className="w-9 h-9 rounded-xl flex items-center justify-center"
-              style={{ background: `${pot.color}20` }}
-            >
-              <IconComp size={18} style={{ color: pot.color }} />
-            </div>
-            {pot.name}
-            {pot.isLocked && (
-              <Lock size={14} style={{ color: "var(--color-warning)" }} />
-            )}
-          </SheetTitle>
-        </SheetHeader>
-
-        {/* Balance */}
-        <div
-          className="rounded-2xl p-4 mb-4"
-          style={{ background: "var(--color-surface-2)" }}
-        >
-          <p
-            className="text-xs mb-1"
-            style={{ color: "var(--color-text-muted)" }}
-          >
-            Current Balance
-          </p>
-          <p
-            className="text-2xl font-bold"
-            style={{ fontFamily: "var(--font-display)", color: pot.color }}
-          >
-            {fmt(pot.currentAmount)}
-          </p>
-          {pot.targetAmount && (
-            <>
-              <p
-                className="text-xs mt-1"
-                style={{ color: "var(--color-text-muted)" }}
-              >
-                Target: {fmt(pot.targetAmount)}
-                {pot.deadline ? ` · Due ${pot.deadline}` : ""}
-              </p>
-              <div
-                className="mt-2 h-1.5 rounded-full overflow-hidden"
-                style={{ background: "var(--color-border)" }}
-              >
-                <div
-                  className="h-full rounded-full"
-                  style={{
-                    width: `${progress}%`,
-                    background: pot.isCompleted
-                      ? "var(--color-income)"
-                      : pot.color,
-                  }}
-                />
-              </div>
-              <p
-                className="text-xs mt-1"
-                style={{ color: "var(--color-text-muted)" }}
-              >
-                {Math.round(progress ?? 0)}% reached
-              </p>
-            </>
-          )}
-        </div>
-
-        {/* Action buttons */}
-        {!action && (
-          <div className="grid grid-cols-3 gap-2 mb-4">
-            {[
-              {
-                key: "withdrawal",
-                label: "Withdraw",
-                icon: ArrowUpRight,
-                bgColor: "var(--color-expense)",
-              },
-              {
-                key: "transfer",
-                label: "Transfer",
-                icon: ArrowLeftRight,
-                bgColor: "var(--color-dash)",
-              },
-              {
-                key: "deposit",
-                label: "Deposit",
-                icon: ArrowDownLeft,
-                bgColor: "var(--color-income)",
-              },
-            ].map(({ key, label, icon: Icon, bgColor }) => (
-              <button
-                key={key}
-                onClick={() => setAction(key as Action)}
-                className="flex flex-col items-center gap-1.5 py-3 rounded-xl text-xs font-semibold transition-all hover:opacity-80 hover:scale-105 active:scale-95"
-                style={{
-                  background: `${bgColor}15`,
-                  border: `1px solid ${bgColor}50`,
-                  color: bgColor,
-                }}
-              >
-                <Icon size={16} />
-                {label}
-              </button>
-            ))}
-          </div>
-        )}
-
-        {/* ── Action form ── */}
-        {action && (
+    <Drawer.Root open={!!pot} onOpenChange={(next) => !next && handleClose()}>
+      <Drawer.Portal>
+        <Drawer.Overlay
+          className="fixed inset-0 bg-black/40 z-50"
+          onClick={handleClose}
+        />
+        <Drawer.Content className="fixed inset-x-0 bottom-0 z-50 outline-none flex flex-col sm:inset-0 sm:items-center sm:justify-center sm:pointer-events-none">
           <div
-            className="rounded-2xl p-4 mb-4 space-y-3"
+            onClick={(e) => e.stopPropagation()}
+            className="w-full flex flex-col rounded-t-2xl outline-none max-h-[92svh] sm:max-w-md sm:max-h-[85vh] sm:rounded-2xl sm:shadow-2xl sm:pointer-events-auto"
             style={{
-              background: "var(--color-surface-2)",
+              background: "var(--color-surface)",
               border: "1px solid var(--color-border)",
             }}
           >
-            {/* Form header */}
-            <div className="flex items-center justify-between mb-1">
-              <div className="flex items-center gap-2">
-                {(() => {
-                  const { icon: ActionIcon, color, label } = actionMeta[action];
-                  return (
-                    <>
-                      <ActionIcon size={15} style={{ color }} />
-                      <p
-                        className="text-sm font-bold"
-                        style={{
-                          color,
-                          fontFamily: "var(--font-display)",
-                        }}
-                      >
-                        {label}
-                      </p>
-                    </>
-                  );
-                })()}
-              </div>
-              <button
-                onClick={reset}
-                className="p-1 rounded-lg hover:opacity-70 transition-opacity"
-                style={{ color: "var(--color-text-muted)" }}
+            <div
+              className="mx-auto mt-3 h-1.5 w-10 rounded-full shrink-0 sm:hidden"
+              style={{ background: "var(--color-border)" }}
+            />
+
+            {/* Header */}
+            <div className="flex items-center justify-between px-5 pt-4 pb-3 shrink-0">
+              <Drawer.Title
+                className="flex items-center gap-3 text-base font-bold"
+                style={{
+                  fontFamily: "var(--font-display)",
+                  color: "var(--color-text-primary)",
+                }}
               >
-                <X size={15} />
+                <div
+                  className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0"
+                  style={{ background: `${pot.color}20` }}
+                >
+                  <IconComp size={18} style={{ color: pot.color }} />
+                </div>
+                {pot.name}
+                {pot.isLocked && (
+                  <Lock size={14} style={{ color: "var(--color-warning)" }} />
+                )}
+              </Drawer.Title>
+              <button
+                onClick={handleClose}
+                className="p-1.5 rounded-full transition-opacity hover:opacity-70 shrink-0"
+                style={{ color: "var(--color-text-secondary)" }}
+                aria-label="Close"
+              >
+                <X size={18} />
               </button>
             </div>
 
-            {/* Amount input */}
-            <div>
-              <label
-                className="text-xs font-medium mb-1 block"
-                style={{ color: "var(--color-text-muted)" }}
-              >
-                Amount
-              </label>
-              <div className="relative">
-                <span
-                  className="absolute left-3 top-1/2 -translate-y-1/2 text-sm font-medium"
-                  style={{ color: "var(--color-text-muted)" }}
-                >
-                  {symbol}
-                </span>
-                <input
-                  type="number"
-                  min="0"
-                  step="any"
-                  placeholder="0.00"
-                  value={amount}
-                  onChange={(e) => {
-                    setAmount(e.target.value);
-                    setError("");
-                    setShowWarning(false);
-                  }}
-                  className={inputClass}
-                  style={{ ...inputStyle, paddingLeft: "2rem" }}
-                  autoFocus
-                />
-              </div>
-            </div>
-
-            {/* Transfer destination */}
-            {action === "transfer" && (
-              <div>
-                <label
-                  className="text-xs font-medium mb-1 block"
-                  style={{ color: "var(--color-text-muted)" }}
-                >
-                  To Pot
-                </label>
-                <div className="relative">
-                  <select
-                    value={transferTo}
-                    onChange={(e) => {
-                      setTransferTo(e.target.value);
-                      setError("");
-                    }}
-                    className={inputClass}
-                    style={{
-                      ...inputStyle,
-                      appearance: "none",
-                      paddingRight: "2rem",
-                    }}
-                  >
-                    <option value="">Select pot…</option>
-                    {otherPots.map((p) => (
-                      <option key={p.id} value={p.id}>
-                        {p.name}
-                      </option>
-                    ))}
-                  </select>
-                  <ChevronDown
-                    size={14}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none"
-                    style={{ color: "var(--color-text-muted)" }}
-                  />
-                </div>
-              </div>
-            )}
-
-            {/* Note input */}
-            <div>
-              <label
-                className="text-xs font-medium mb-1 block"
-                style={{ color: "var(--color-text-muted)" }}
-              >
-                Note{" "}
-                <span
-                  style={{ color: "var(--color-text-muted)", fontWeight: 400 }}
-                >
-                  (optional)
-                </span>
-              </label>
-              <input
-                type="text"
-                placeholder="e.g. Monthly contribution"
-                value={note}
-                onChange={(e) => setNote(e.target.value)}
-                className={inputClass}
-                style={inputStyle}
-              />
-            </div>
-
-            {/* Warning banner */}
-            {showWarning && (
+            {/* Scrollable body */}
+            <div className="overflow-y-auto px-5 pb-6">
+              {/* Balance */}
               <div
-                className="rounded-xl px-3 py-2.5 text-xs font-medium"
-                style={{
-                  background: "var(--color-warning)15",
-                  border: "1px solid var(--color-warning)40",
-                  color: "var(--color-warning)",
-                }}
+                className="rounded-2xl p-4 mb-4"
+                style={{ background: "var(--color-surface-2)" }}
               >
-                {pot.isLocked
-                  ? "This pot is locked. Withdrawing will override the lock. Tap confirm again to proceed."
-                  : `This will bring the balance below your floor of ${fmt(pot.floorAmount!)}. Tap confirm again to proceed.`}
-              </div>
-            )}
-
-            {/* Error */}
-            {error && (
-              <p
-                className="text-xs font-medium"
-                style={{ color: "var(--color-expense)" }}
-              >
-                {error}
-              </p>
-            )}
-
-            {/* Confirm button */}
-            <button
-              onClick={handleAction}
-              disabled={loading}
-              className="w-full py-2.5 rounded-xl text-sm font-bold transition-opacity hover:opacity-80 disabled:opacity-50"
-              style={{
-                background: actionMeta[action].color,
-                color: "black",
-              }}
-            >
-              {loading
-                ? "Processing…"
-                : showWarning
-                  ? "Confirm anyway"
-                  : `Confirm ${actionMeta[action].label}`}
-            </button>
-          </div>
-        )}
-
-        {/* Transaction history */}
-        {savingsTransactions.length > 0 && (
-          <div>
-            <p
-              className="text-xs font-semibold uppercase tracking-widest mb-3"
-              style={{
-                color: "var(--color-text-muted)",
-                fontFamily: "var(--font-display)",
-              }}
-            >
-              History
-            </p>
-            <div className="space-y-2">
-              {savingsTransactions.slice(0, 10).map((tx) => {
-                const isIn = tx.toPotId === pot.id;
-                return (
-                  <div
-                    key={tx.id}
-                    className="flex items-center justify-between py-2.5 px-3 rounded-xl"
-                    style={{ background: "var(--color-surface-2)" }}
-                  >
-                    <div className="flex items-center gap-2.5">
+                <p
+                  className="text-xs mb-1"
+                  style={{ color: "var(--color-text-muted)" }}
+                >
+                  Current Balance
+                </p>
+                <p
+                  className="text-2xl font-bold"
+                  style={{
+                    fontFamily: "var(--font-display)",
+                    color: pot.color,
+                  }}
+                >
+                  {fmt(pot.currentAmount)}
+                </p>
+                {pot.targetAmount && (
+                  <>
+                    <p
+                      className="text-xs mt-1"
+                      style={{ color: "var(--color-text-muted)" }}
+                    >
+                      Target: {fmt(pot.targetAmount)}
+                      {pot.deadline ? ` · Due ${pot.deadline}` : ""}
+                    </p>
+                    <div
+                      className="mt-2 h-1.5 rounded-full overflow-hidden"
+                      style={{ background: "var(--color-border)" }}
+                    >
                       <div
-                        className="w-7 h-7 rounded-lg flex items-center justify-center"
+                        className="h-full rounded-full"
                         style={{
-                          background: isIn
-                            ? "var(--color-income)15"
-                            : "var(--color-expense)15",
+                          width: `${progress}%`,
+                          background: pot.isCompleted
+                            ? "var(--color-income)"
+                            : pot.color,
                         }}
-                      >
-                        {tx.type === "transfer" ? (
-                          <ArrowLeftRight
-                            size={12}
-                            style={{ color: "var(--color-dash)" }}
-                          />
-                        ) : isIn ? (
-                          <ArrowDownLeft
-                            size={12}
-                            style={{ color: "var(--color-income)" }}
-                          />
-                        ) : (
-                          <ArrowUpRight
-                            size={12}
-                            style={{ color: "var(--color-expense)" }}
-                          />
-                        )}
-                      </div>
-                      <div>
-                        <p
-                          className="text-xs font-medium capitalize"
-                          style={{ color: "var(--color-text-primary)" }}
-                        >
-                          {tx.type}
-                        </p>
-                        <p
-                          className="text-xs"
-                          style={{ color: "var(--color-text-muted)" }}
-                        >
-                          {tx.note ??
-                            format(new Date(tx.createdAt), "MMM d, yyyy")}
-                        </p>
-                      </div>
+                      />
                     </div>
                     <p
-                      className="text-sm font-semibold"
+                      className="text-xs mt-1"
+                      style={{ color: "var(--color-text-muted)" }}
+                    >
+                      {Math.round(progress ?? 0)}% reached
+                    </p>
+                  </>
+                )}
+              </div>
+
+              {/* Action buttons */}
+              {!action && (
+                <div className="grid grid-cols-3 gap-2 mb-4">
+                  {[
+                    {
+                      key: "withdrawal",
+                      label: "Withdraw",
+                      icon: ArrowUpRight,
+                      bgColor: "var(--color-expense)",
+                    },
+                    {
+                      key: "transfer",
+                      label: "Transfer",
+                      icon: ArrowLeftRight,
+                      bgColor: "var(--color-dash)",
+                    },
+                    {
+                      key: "deposit",
+                      label: "Deposit",
+                      icon: ArrowDownLeft,
+                      bgColor: "var(--color-income)",
+                    },
+                  ].map(({ key, label, icon: Icon, bgColor }) => (
+                    <button
+                      key={key}
+                      onClick={() => setAction(key as Action)}
+                      className="flex flex-col items-center gap-1.5 py-3 rounded-xl text-xs font-semibold transition-all hover:opacity-80 hover:scale-105 active:scale-95"
                       style={{
-                        fontFamily: "var(--font-display)",
-                        color: isIn
-                          ? "var(--color-income)"
-                          : "var(--color-expense)",
+                        background: `${bgColor}15`,
+                        border: `1px solid ${bgColor}50`,
+                        color: bgColor,
                       }}
                     >
-                      {isIn ? "+" : "-"}
-                      {fmt(tx.amount)}
-                    </p>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        )}
+                      <Icon size={16} />
+                      {label}
+                    </button>
+                  ))}
+                </div>
+              )}
 
-        {/* Delete pot */}
-        {!confirmDelete ? (
-          <button
-            onClick={() => setConfirmDelete(true)}
-            className="flex items-center gap-2 mt-5 text-xs font-medium px-3 py-2 rounded-xl transition-opacity hover:opacity-70"
-            style={{
-              background: "var(--color-expense)12",
-              color: "var(--color-expense)",
-              border: "1px solid var(--color-expense)25",
-            }}
-          >
-            <Trash2 size={13} />
-            Delete this pot
-          </button>
-        ) : (
-          <div
-            className="mt-5 rounded-2xl p-4 space-y-3"
-            style={{
-              background: "var(--color-expense)10",
-              border: "1px solid var(--color-expense)30",
-            }}
-          >
-            <p
-              className="text-xs font-semibold"
-              style={{ color: "var(--color-expense)" }}
-            >
-              Are you sure you want to delete the:{" "}
-              <span className="text-green-500">
-                {pot.name}
-              </span>{" "}
-              pot?
-              <br/>
-              {pot.currentAmount > 0 && (
-                <>
-                  {" "}
-                  This will withdraw <span className="text-income">{fmt(pot.currentAmount)}</span> back
-                  to your wallet, then delete the pot.
-                </>
-              )}{" "}
-              This action can't be undone.
-            </p>
-            <div className="flex gap-2">
-              <button
-                onClick={() => setConfirmDelete(false)}
-                className="flex-1 py-2 rounded-xl text-xs font-semibold transition-opacity hover:opacity-70"
-                style={{
-                  background: "var(--color-surface-2)",
-                  border: "1px solid var(--color-border)",
-                  color: "var(--color-text-secondary)",
-                }}
-              >
-                Cancel
-              </button>
-              <button
-                onClick={async () => {
-                  if (!user) return;
-                  await deletePotWithWithdrawal(pot.id, user.id);
-                  handleClose();
-                }}
-                className="flex-1 py-2 rounded-xl text-xs font-semibold transition-opacity hover:opacity-70"
-                style={{
-                  background: "var(--color-expense)",
-                  color: "white",
-                }}
-              >
-                {pot.currentAmount > 0 ? "Withdraw & Delete" : "Delete"}
-              </button>
+              {/* Action form */}
+              {action && (
+                <div
+                  className="rounded-2xl p-4 mb-4 space-y-3"
+                  style={{
+                    background: "var(--color-surface-2)",
+                    border: "1px solid var(--color-border)",
+                  }}
+                >
+                  <div className="flex items-center justify-between mb-1">
+                    <div className="flex items-center gap-2">
+                      {(() => {
+                        const {
+                          icon: ActionIcon,
+                          color,
+                          label,
+                        } = actionMeta[action];
+                        return (
+                          <>
+                            <ActionIcon size={15} style={{ color }} />
+                            <p
+                              className="text-sm font-bold"
+                              style={{
+                                color,
+                                fontFamily: "var(--font-display)",
+                              }}
+                            >
+                              {label}
+                            </p>
+                          </>
+                        );
+                      })()}
+                    </div>
+                    <button
+                      onClick={reset}
+                      className="p-1 rounded-lg hover:opacity-70 transition-opacity"
+                      style={{ color: "var(--color-text-muted)" }}
+                    >
+                      <X size={15} />
+                    </button>
+                  </div>
+
+                  <div>
+                    <label
+                      className="text-xs font-medium mb-1 block"
+                      style={{ color: "var(--color-text-muted)" }}
+                    >
+                      Amount
+                    </label>
+                    <div className="relative">
+                      <span
+                        className="absolute left-3 top-1/2 -translate-y-1/2 text-sm font-medium"
+                        style={{ color: "var(--color-text-muted)" }}
+                      >
+                        {symbol}
+                      </span>
+                      <input
+                        type="number"
+                        min="0"
+                        step="any"
+                        placeholder="0.00"
+                        value={amount}
+                        onChange={(e) => {
+                          setAmount(e.target.value);
+                          setError("");
+                          setShowWarning(false);
+                        }}
+                        className={inputClass}
+                        style={{ ...inputStyle, paddingLeft: "2rem" }}
+                        autoFocus
+                      />
+                    </div>
+                  </div>
+
+                  {action === "transfer" && (
+                    <div>
+                      <label
+                        className="text-xs font-medium mb-1 block"
+                        style={{ color: "var(--color-text-muted)" }}
+                      >
+                        To Pot
+                      </label>
+                      <div className="relative">
+                        <select
+                          value={transferTo}
+                          onChange={(e) => {
+                            setTransferTo(e.target.value);
+                            setError("");
+                          }}
+                          className={inputClass}
+                          style={{
+                            ...inputStyle,
+                            appearance: "none",
+                            paddingRight: "2rem",
+                          }}
+                        >
+                          <option value="">Select pot…</option>
+                          {otherPots.map((p) => (
+                            <option key={p.id} value={p.id}>
+                              {p.name}
+                            </option>
+                          ))}
+                        </select>
+                        <ChevronDown
+                          size={14}
+                          className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none"
+                          style={{ color: "var(--color-text-muted)" }}
+                        />
+                      </div>
+                    </div>
+                  )}
+
+                  <div>
+                    <label
+                      className="text-xs font-medium mb-1 block"
+                      style={{ color: "var(--color-text-muted)" }}
+                    >
+                      Note{" "}
+                      <span
+                        style={{
+                          color: "var(--color-text-muted)",
+                          fontWeight: 400,
+                        }}
+                      >
+                        (optional)
+                      </span>
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="e.g. Monthly contribution"
+                      value={note}
+                      onChange={(e) => setNote(e.target.value)}
+                      className={inputClass}
+                      style={inputStyle}
+                    />
+                  </div>
+
+                  {showWarning && (
+                    <div
+                      className="rounded-xl px-3 py-2.5 text-xs font-medium"
+                      style={{
+                        background: "var(--color-warning)15",
+                        border: "1px solid var(--color-warning)40",
+                        color: "var(--color-warning)",
+                      }}
+                    >
+                      {pot.isLocked
+                        ? "This pot is locked. Withdrawing will override the lock. Tap confirm again to proceed."
+                        : `This will bring the balance below your floor of ${fmt(pot.floorAmount!)}. Tap confirm again to proceed.`}
+                    </div>
+                  )}
+
+                  {error && (
+                    <p
+                      className="text-xs font-medium"
+                      style={{ color: "var(--color-expense)" }}
+                    >
+                      {error}
+                    </p>
+                  )}
+
+                  <button
+                    onClick={handleAction}
+                    disabled={loading}
+                    className="w-full py-2.5 rounded-xl text-sm font-bold transition-opacity hover:opacity-80 disabled:opacity-50"
+                    style={{
+                      background: actionMeta[action].color,
+                      color: "black",
+                    }}
+                  >
+                    {loading
+                      ? "Processing…"
+                      : showWarning
+                        ? "Confirm anyway"
+                        : `Confirm ${actionMeta[action].label}`}
+                  </button>
+                </div>
+              )}
+
+              {/* Transaction history */}
+              {savingsTransactions.length > 0 && (
+                <div>
+                  <p
+                    className="text-xs font-semibold uppercase tracking-widest mb-3"
+                    style={{
+                      color: "var(--color-text-muted)",
+                      fontFamily: "var(--font-display)",
+                    }}
+                  >
+                    History
+                  </p>
+                  <div className="space-y-2">
+                    {savingsTransactions.map((tx) => {
+                      const isIn = tx.toPotId === pot.id;
+                      return (
+                        <div
+                          key={tx.id}
+                          className="flex items-center justify-between py-2.5 px-3 rounded-xl"
+                          style={{ background: "var(--color-surface-2)" }}
+                        >
+                          <div className="flex items-center gap-2.5 min-w-0">
+                            <div
+                              className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0"
+                              style={{
+                                background: isIn
+                                  ? "var(--color-income)15"
+                                  : "var(--color-expense)15",
+                              }}
+                            >
+                              {tx.type === "transfer" ? (
+                                <ArrowLeftRight
+                                  size={12}
+                                  style={{ color: "var(--color-dash)" }}
+                                />
+                              ) : isIn ? (
+                                <ArrowDownLeft
+                                  size={12}
+                                  style={{ color: "var(--color-income)" }}
+                                />
+                              ) : (
+                                <ArrowUpRight
+                                  size={12}
+                                  style={{ color: "var(--color-expense)" }}
+                                />
+                              )}
+                            </div>
+                            <div className="min-w-0">
+                              <p
+                                className="text-xs font-medium capitalize"
+                                style={{ color: "var(--color-text-primary)" }}
+                              >
+                                {tx.type}
+                              </p>
+                              <p
+                                className="text-xs truncate"
+                                style={{ color: "var(--color-text-muted)" }}
+                              >
+                                {format(new Date(tx.createdAt), "MMM d, yyyy")}
+                                {tx.note ? ` · ${tx.note}` : ""}
+                              </p>
+                            </div>
+                          </div>
+                          <p
+                            className="text-sm font-semibold shrink-0 pl-2"
+                            style={{
+                              fontFamily: "var(--font-display)",
+                              color: isIn
+                                ? "var(--color-income)"
+                                : "var(--color-expense)",
+                            }}
+                          >
+                            {isIn ? "+" : "-"}
+                            {fmt(tx.amount)}
+                          </p>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {/* Delete pot */}
+              {!confirmDelete ? (
+                <button
+                  onClick={() => setConfirmDelete(true)}
+                  className="flex items-center gap-2 mt-5 text-xs font-medium px-3 py-2 rounded-xl transition-opacity hover:opacity-70"
+                  style={{
+                    background: "var(--color-expense)12",
+                    color: "var(--color-expense)",
+                    border: "1px solid var(--color-expense)25",
+                  }}
+                >
+                  <Trash2 size={13} />
+                  Delete this pot
+                </button>
+              ) : (
+                <div
+                  className="mt-5 rounded-2xl p-4 space-y-3"
+                  style={{
+                    background: "var(--color-expense)10",
+                    border: "1px solid var(--color-expense)30",
+                  }}
+                >
+                  <p
+                    className="text-xs font-semibold"
+                    style={{ color: "var(--color-expense)" }}
+                  >
+                    Are you sure you want to delete the:{" "}
+                    <span style={{ color: "var(--color-income)" }}>
+                      {pot.name}
+                    </span>{" "}
+                    pot?
+                    <br />
+                    {pot.currentAmount > 0 && (
+                      <>
+                        {" "}
+                        This will withdraw{" "}
+                        <span style={{ color: "var(--color-income)" }}>
+                          {fmt(pot.currentAmount)}
+                        </span>{" "}
+                        back to your wallet, then delete the pot.
+                      </>
+                    )}{" "}
+                    This action can't be undone.
+                  </p>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => setConfirmDelete(false)}
+                      disabled={deleting}
+                      className="flex-1 py-2 rounded-xl text-xs font-semibold transition-opacity hover:opacity-70 disabled:opacity-50"
+                      style={{
+                        background: "var(--color-surface-2)",
+                        border: "1px solid var(--color-border)",
+                        color: "var(--color-text-secondary)",
+                      }}
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      onClick={async () => {
+                        if (!user) return;
+                        setDeleting(true);
+                        try {
+                          await deletePotWithWithdrawal(pot.id, user.id);
+                          handleClose();
+                        } finally {
+                          setDeleting(false);
+                        }
+                      }}
+                      disabled={deleting}
+                      className="flex-1 py-2 rounded-xl text-xs font-semibold transition-opacity hover:opacity-70 disabled:opacity-50"
+                      style={{
+                        background: "var(--color-expense)",
+                        color: "white",
+                      }}
+                    >
+                      {deleting
+                        ? "Processing…"
+                        : pot.currentAmount > 0
+                          ? "Withdraw & Delete"
+                          : "Delete"}
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
-        )}
-      </SheetContent>
-    </Sheet>
+        </Drawer.Content>
+      </Drawer.Portal>
+    </Drawer.Root>
   );
 }
