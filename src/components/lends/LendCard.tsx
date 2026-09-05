@@ -89,22 +89,22 @@ export function LendCard({
       </div>
 
       {/* Progress bar */}
-      <div className="px-4 pb-2">
-        <div
-          className="h-1.5 rounded-full overflow-hidden"
-          style={{ background: "var(--color-surface-2)" }}
-        >
+      {!isSettled && (
+        <div className="px-4 pb-2">
           <div
-            className="h-full rounded-full transition-all"
-            style={{
-              width: `${pct}%`,
-              background: isSettled
-                ? "var(--color-income)"
-                : "var(--color-accent)",
-            }}
-          />
+            className="h-1.5 rounded-full overflow-hidden"
+            style={{ background: "var(--color-surface-2)" }}
+          >
+            <div
+              className="h-full rounded-full transition-all"
+              style={{
+                width: `${pct}%`,
+                background: "var(--color-accent)",
+              }}
+            />
+          </div>
         </div>
-      </div>
+      )}
 
       <div
         className="flex items-center justify-between px-4 py-2"
