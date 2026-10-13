@@ -63,8 +63,25 @@ export default function Transactions() {
     );
   }, [lends, search, isLendsView]);
 
-  const pendingLends = lends.filter((l) => !l.settledOn);
-  const pendingTotal = pendingLends.reduce((s, l) => s + l.amount, 0);
+  const pendingLends = useMemo(
+    () => lends.filter((l) => !l.settledOn),
+    [lends],
+  );
+
+  // Outstanding balance = original amount minus payments received, per lend
+  const pendingTotal = useMemo(() => {
+    const paidByLend = new Map<string, number>();
+    lendPayments.forEach((p) =>
+      paidByLend.set(p.lendId, (paidByLend.get(p.lendId) ?? 0) + p.amount),
+    );
+
+    const total = pendingLends.reduce((sum, l) => {
+      const paid = paidByLend.get(l.id) ?? 0;
+      return sum + Math.max(l.amount - paid, 0);
+    }, 0);
+
+    return Math.round(total * 100) / 100;
+  }, [pendingLends, lendPayments]);
 
   const grouped = useMemo(() => {
     const map = new Map<string, Transaction[]>();
