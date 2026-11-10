@@ -27,6 +27,8 @@ export function LendCard({
   const { format: fmt } = useCurrency();
   const [expanded, setExpanded] = useState(false);
 
+  const isBorrowed = lend.direction === "borrowed";
+
   const cat = categories.find((c) => c.id === lend.categoryId);
   const IconComp = cat
     ? ((Icons as any)[cat.icon] ?? Icons.CircleDot)
@@ -44,6 +46,14 @@ export function LendCard({
     : isOverdue
       ? "#f59e0b"
       : "var(--color-text-muted)";
+
+  // lent: money went out (amber, -), borrowed: money came in (green, +)
+  const directionColor = isBorrowed ? "var(--color-income)" : "#f59e0b";
+  const amountColor = isSettled ? "var(--color-income)" : directionColor;
+  const amountSign = isSettled ? "" : isBorrowed ? "+" : "-";
+
+  const paidLabel = isBorrowed ? "repaid" : "received";
+  const actionLabel = isBorrowed ? "Repay" : "Received";
 
   return (
     <div
@@ -65,25 +75,34 @@ export function LendCard({
           <IconComp size={18} />
         </div>
         <div className="flex-1 min-w-0">
-          <p
-            className="text-sm font-semibold truncate"
-            style={{ color: "var(--color-text-primary)" }}
-          >
-            {lend.title}
-          </p>
+          <div className="flex items-center gap-2">
+            <p
+              className="text-sm font-semibold truncate"
+              style={{ color: "var(--color-text-primary)" }}
+            >
+              {lend.title}
+            </p>
+            <span
+              className="text-[10px] font-bold uppercase px-1.5 py-0.5 rounded-md shrink-0"
+              style={{
+                background: `color-mix(in srgb, ${directionColor} 15%, transparent)`,
+                color: directionColor,
+              }}
+            >
+              {isBorrowed ? "Borrowed" : "Lent"}
+            </span>
+          </div>
           <p className="text-xs" style={{ color: "var(--color-text-muted)" }}>
             {isSettled
               ? `Settled ${format(new Date(lend.settledOn!), "MMM d, yyyy")}`
-              : `Since ${format(new Date(lend.lentOn), "MMM d, yyyy")} · ${daysOut}d out`}
+              : `Since ${format(new Date(lend.lentOn), "MMM d, yyyy")} · ${daysOut}d ${isBorrowed ? "owed" : "out"}`}
           </p>
         </div>
         <span
           className="text-sm font-bold shrink-0"
-          style={{
-            color: isSettled ? "var(--color-income)" : "var(--color-expense)",
-          }}
+          style={{ color: amountColor }}
         >
-          {isSettled ? "" : "-"}
+          {amountSign}
           {fmt(lend.amount)}
         </span>
       </div>
@@ -125,7 +144,7 @@ export function LendCard({
             className="text-xs font-medium"
             style={{ color: isOverdue ? "#f59e0b" : "var(--color-text-muted)" }}
           >
-            {fmt(paid)} paid · {fmt(remaining)} left
+            {fmt(paid)} {paidLabel} · {fmt(remaining)} left
           </span>
         )}
         <div className="flex items-center gap-2">
@@ -138,7 +157,7 @@ export function LendCard({
                 color: "var(--color-income)",
               }}
             >
-              <Plus size={11} /> Payment
+              <Plus size={11} /> {actionLabel}
             </button>
           )}
           <button
@@ -170,7 +189,8 @@ export function LendCard({
             style={{ color: "var(--color-text-muted)" }}
           >
             <span>
-              {payments.length} payment{payments.length > 1 ? "s" : ""}
+              {payments.length} {isBorrowed ? "repayment" : "payment"}
+              {payments.length > 1 ? "s" : ""}
             </span>
             <ChevronDown
               size={14}

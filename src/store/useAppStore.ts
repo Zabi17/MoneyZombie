@@ -9,6 +9,7 @@ import {
   SavingsPot,
   SavingsTransaction,
   Lend,
+  LendDirection,
   LendPayment,
 } from "../types";
 
@@ -82,6 +83,7 @@ type AppStore = {
   // ── Lends ──
   addLend: (
     data: {
+      direction: LendDirection;
       title: string;
       amount: number;
       categoryId: string;
@@ -105,6 +107,18 @@ type AppStore = {
   removeLendPayment: (paymentId: string) => Promise<void>;
   deleteLend: (lendId: string) => Promise<void>;
 };
+
+// Wallet-linked transfer titles. Lent: out-in. Borrowed: in-out.
+const LEND_TX_PREFIX: Record<LendDirection, { open: string; payment: string }> =
+  {
+    lent: { open: "Lent · ", payment: "Returned · " },
+    borrowed: { open: "Borrowed · ", payment: "Repaid · " },
+  };
+
+export const isLendTxTitle = (title: string) =>
+  Object.values(LEND_TX_PREFIX).some(
+    (p) => title.startsWith(p.open) || title.startsWith(p.payment),
+  );
 
 export const getLendPaidTotal = (payments: LendPayment[], lendId: string) =>
   Math.round(
@@ -279,6 +293,7 @@ export const useAppStore = create<AppStore>()((set, get) => ({
       const lends: Lend[] = (lendsRes.data ?? []).map((r) => ({
         id: r.id,
         userId: r.user_id,
+        direction: (r.direction ?? "lent") as LendDirection,
         title: r.title,
         amount: Number(r.amount),
         categoryId: r.category_id,
@@ -865,10 +880,11 @@ export const useAppStore = create<AppStore>()((set, get) => ({
       const lendId = nanoid();
       const debitTxId = nanoid();
       const createdAt = new Date().toISOString();
+      const isBorrowed = data.direction === "borrowed";
 
       const debitTx: Transaction = {
         id: debitTxId,
-        title: `Lent · ${data.title}`,
+        title: `${LEND_TX_PREFIX[data.direction].open}${data.title}`,
         amount: data.amount,
         type: "transfer", // hidden from income/expense stats
         categoryId: data.categoryId,
@@ -880,6 +896,7 @@ export const useAppStore = create<AppStore>()((set, get) => ({
       const lend: Lend = {
         id: lendId,
         userId,
+        direction: data.direction,
         title: data.title,
         amount: data.amount,
         categoryId: data.categoryId,
@@ -911,6 +928,7 @@ export const useAppStore = create<AppStore>()((set, get) => ({
         supabase.from("lends").insert({
           id: lendId,
           user_id: userId,
+          direction: data.direction,
           title: data.title,
           amount: data.amount,
           category_id: data.categoryId,
@@ -921,9 +939,9 @@ export const useAppStore = create<AppStore>()((set, get) => ({
           created_at: createdAt,
         }),
       ]);
-      toast.success("Lend recorded");
+      toast.success(isBorrowed ? "Borrowing recorded" : "Lend recorded");
     } catch (error) {
-      toast.error("Failed to record lend");
+      toast.error("Failed to record entry");
       console.log(error);
     }
   },
@@ -941,13 +959,15 @@ export const useAppStore = create<AppStore>()((set, get) => ({
         }
       }
 
+      const openPrefix = LEND_TX_PREFIX[lend.direction].open;
+
       set((s) => ({
         lends: s.lends.map((l) => (l.id === id ? { ...l, ...data } : l)),
         transactions: s.transactions.map((t) =>
           t.id === lend.walletDebitTxId
             ? {
                 ...t,
-                title: `Lent · ${data.title ?? lend.title}`,
+                title: `${openPrefix}${data.title ?? lend.title}`,
                 amount: data.amount ?? lend.amount,
                 date: data.lentOn ?? lend.lentOn,
                 categoryId: data.categoryId ?? lend.categoryId,
@@ -972,7 +992,7 @@ export const useAppStore = create<AppStore>()((set, get) => ({
         supabase
           .from("transactions")
           .update({
-            title: `Lent · ${data.title ?? lend.title}`,
+            title: `${openPrefix}${data.title ?? lend.title}`,
             amount: data.amount ?? lend.amount,
             date: data.lentOn ?? lend.lentOn,
             category_id: data.categoryId ?? lend.categoryId,
@@ -980,10 +1000,12 @@ export const useAppStore = create<AppStore>()((set, get) => ({
           .eq("id", lend.walletDebitTxId),
       ]);
 
-      toast.success("Lend updated");
+      toast.success(
+        lend.direction === "borrowed" ? "Borrowing updated" : "Lend updated",
+      );
       return true;
     } catch (error) {
-      toast.error("Failed to update lend");
+      toast.error("Failed to update entry");
       console.error(error);
       return false;
     }
@@ -1007,15 +1029,16 @@ export const useAppStore = create<AppStore>()((set, get) => ({
         return;
       }
 
+      const isBorrowed = lend.direction === "borrowed";
       const paymentId = nanoid();
       const txId = nanoid();
       const createdAt = new Date().toISOString();
       const newTotal = Math.round((paidSoFar + amount) * 100) / 100;
       const isNowSettled = newTotal >= lend.amount;
 
-      const creditTx: Transaction = {
+      const paymentTx: Transaction = {
         id: txId,
-        title: `Returned · ${lend.title}`,
+        title: `${LEND_TX_PREFIX[lend.direction].payment}${lend.title}`,
         amount,
         type: "transfer",
         categoryId: lend.categoryId,
@@ -1035,7 +1058,7 @@ export const useAppStore = create<AppStore>()((set, get) => ({
 
       // Optimistic
       set((s) => ({
-        transactions: [creditTx, ...s.transactions],
+        transactions: [paymentTx, ...s.transactions],
         lendPayments: [payment, ...s.lendPayments],
         lends: s.lends.map((l) =>
           l.id === lendId
@@ -1048,7 +1071,7 @@ export const useAppStore = create<AppStore>()((set, get) => ({
         supabase.from("transactions").insert({
           id: txId,
           user_id: userId,
-          title: creditTx.title,
+          title: paymentTx.title,
           amount,
           type: "transfer",
           category_id: lend.categoryId,
@@ -1071,10 +1094,11 @@ export const useAppStore = create<AppStore>()((set, get) => ({
           .eq("id", lendId),
       ]);
 
+      const left = Math.round((lend.amount - newTotal) * 100) / 100;
       toast.success(
         isNowSettled
           ? "Fully settled 🎉"
-          : `₹${amount} logged · ₹${Math.round((lend.amount - newTotal) * 100) / 100} remaining`,
+          : `₹${amount} ${isBorrowed ? "repaid" : "received"} · ₹${left} remaining`,
       );
     } catch (error) {
       toast.error("Failed to log payment");

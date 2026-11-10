@@ -1,7 +1,7 @@
 import { useState, useMemo } from "react";
 import { Plus } from "lucide-react";
-import { useAppStore } from "../store/useAppStore";
-import { Transaction, TransactionType, Lend } from "../types";
+import { useAppStore, isLendTxTitle } from "../store/useAppStore";
+import { Transaction, TransactionType, Lend, LendDirection } from "../types";
 import { TransactionForm } from "../components/transactions/TransactionForm";
 import { TransactionItem } from "../components/transactions/TransactionItem";
 import { DeleteDialog } from "../components/transactions/DeleteDialog";
@@ -11,6 +11,14 @@ import { LendCard } from "../components/lends/LendCard";
 import { LendPaymentDrawer } from "../components/lends/LendPaymentDrawer";
 import { format, isThisYear } from "date-fns";
 import { useCurrency } from "@/hooks/useCurrency";
+
+type LendTab = "all" | LendDirection;
+
+const LEND_TABS: { value: LendTab; label: string }[] = [
+  { value: "all", label: "All" },
+  { value: "lent", label: "I lent" },
+  { value: "borrowed", label: "I borrowed" },
+];
 
 export default function Transactions() {
   const transactions = useAppStore((s) => s.transactions);
@@ -29,9 +37,12 @@ export default function Transactions() {
   const [deletingLendId, setDeletingLendId] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const [catFilter, setCatFilter] = useState("");
-  const [typeFilter, setTypeFilter] = useState<TransactionType | "all" | "lends">("all");
+  const [typeFilter, setTypeFilter] = useState<
+    TransactionType | "all" | "lends"
+  >("all");
+  const [lendTab, setLendTab] = useState<LendTab>("all");
 
-  // Payment drawer state (replaces old settle/undo confirm state)
+  // Payment drawer state
   const [payingLend, setPayingLend] = useState<Lend | null>(null);
   const [payDrawerOpen, setPayDrawerOpen] = useState(false);
 
@@ -45,10 +56,7 @@ export default function Transactions() {
       const matchCat = !catFilter || tx.categoryId === catFilter;
       let matchType: boolean;
       if (typeFilter === "all") {
-        matchType =
-          tx.type !== "transfer" ||
-          tx.title.startsWith("Lent ·") ||
-          tx.title.startsWith("Returned ·");
+        matchType = tx.type !== "transfer" || isLendTxTitle(tx.title);
       } else {
         matchType = tx.type === typeFilter;
       }
@@ -58,30 +66,40 @@ export default function Transactions() {
 
   const filteredLends = useMemo(() => {
     if (!isLendsView) return [];
-    return lends.filter((l) =>
-      l.title.toLowerCase().includes(search.toLowerCase()),
+    return lends.filter(
+      (l) =>
+        (lendTab === "all" || (l.direction ?? "lent") === lendTab) &&
+        l.title.toLowerCase().includes(search.toLowerCase()),
     );
-  }, [lends, search, isLendsView]);
+  }, [lends, search, isLendsView, lendTab]);
 
   const pendingLends = useMemo(
     () => lends.filter((l) => !l.settledOn),
     [lends],
   );
 
-  // Outstanding balance = original amount minus payments received, per lend
-  const pendingTotal = useMemo(() => {
+  // Outstanding balances, split by direction
+  const { owedToYou, youOwe } = useMemo(() => {
     const paidByLend = new Map<string, number>();
     lendPayments.forEach((p) =>
       paidByLend.set(p.lendId, (paidByLend.get(p.lendId) ?? 0) + p.amount),
     );
 
-    const total = pendingLends.reduce((sum, l) => {
-      const paid = paidByLend.get(l.id) ?? 0;
-      return sum + Math.max(l.amount - paid, 0);
-    }, 0);
+    let owed = 0;
+    let owe = 0;
+    pendingLends.forEach((l) => {
+      const remaining = Math.max(l.amount - (paidByLend.get(l.id) ?? 0), 0);
+      if (l.direction === "borrowed") owe += remaining;
+      else owed += remaining;
+    });
 
-    return Math.round(total * 100) / 100;
+    return {
+      owedToYou: Math.round(owed * 100) / 100,
+      youOwe: Math.round(owe * 100) / 100,
+    };
   }, [pendingLends, lendPayments]);
+
+  const net = Math.round((owedToYou - youOwe) * 100) / 100;
 
   const grouped = useMemo(() => {
     const map = new Map<string, Transaction[]>();
@@ -103,7 +121,7 @@ export default function Transactions() {
     return format(d, isThisYear(d) ? "MMMM d" : "MMMM d, yyyy");
   };
 
-  // A lend-linked transaction is now: the debit tx, OR any payment tx.
+  // A lend-linked transaction is: the opening tx, OR any payment tx.
   const findLendForTx = (txId: string): Lend | undefined => {
     const byDebit = lends.find((l) => l.walletDebitTxId === txId);
     if (byDebit) return byDebit;
@@ -113,14 +131,11 @@ export default function Transactions() {
   };
 
   const handleTxEdit = (tx: Transaction) => {
-    const isLendTx =
-      tx.title.startsWith("Lent ·") || tx.title.startsWith("Returned ·");
-    if (isLendTx) {
+    if (isLendTxTitle(tx.title)) {
       const linked = findLendForTx(tx.id);
       if (linked) {
-        // Debit tx → edit the lend itself. Payment tx → open payment drawer.
-        const isDebit = linked.walletDebitTxId === tx.id;
-        if (isDebit) {
+        const isOpening = linked.walletDebitTxId === tx.id;
+        if (isOpening) {
           setEditingLend(linked);
           setLendFormOpen(true);
         } else {
@@ -135,14 +150,12 @@ export default function Transactions() {
   };
 
   const handleTxDelete = (tx: Transaction) => {
-    const isLendTx =
-      tx.title.startsWith("Lent ·") || tx.title.startsWith("Returned ·");
-    if (isLendTx) {
+    if (isLendTxTitle(tx.title)) {
       const linked = findLendForTx(tx.id);
       if (linked) {
-        const isDebit = linked.walletDebitTxId === tx.id;
-        if (isDebit) {
-          // Deleting the original lend tx deletes the whole lend
+        const isOpening = linked.walletDebitTxId === tx.id;
+        if (isOpening) {
+          // Deleting the opening tx deletes the whole entry
           setDeletingLendId(linked.id);
         } else {
           // Deleting a payment tx removes just that payment
@@ -178,7 +191,7 @@ export default function Transactions() {
               color: "var(--color-text-primary)",
             }}
           >
-            {isLendsView ? "Lends" : "Transactions"}
+            {isLendsView ? "Lends & Borrows" : "Transactions"}
           </h1>
         </div>
         <button
@@ -198,7 +211,7 @@ export default function Transactions() {
             fontFamily: "var(--font-display)",
           }}
         >
-          <Plus size={16} /> {isLendsView ? "Lend" : "Add"}
+          <Plus size={16} /> {isLendsView ? "New" : "Add"}
         </button>
       </div>
 
@@ -216,26 +229,87 @@ export default function Transactions() {
       {/* Lends view */}
       {isLendsView ? (
         <div className="space-y-3">
+          {/* Direction tabs */}
+          <div
+            className="grid grid-cols-3 gap-1 p-1 rounded-xl"
+            style={{
+              background: "var(--color-surface-2)",
+              border: "1px solid var(--color-border)",
+            }}
+          >
+            {LEND_TABS.map((t) => {
+              const active = lendTab === t.value;
+              return (
+                <button
+                  key={t.value}
+                  onClick={() => setLendTab(t.value)}
+                  className="py-1.5 rounded-lg text-xs font-bold transition-all duration-150"
+                  style={{
+                    background: active ? "var(--color-accent)" : "transparent",
+                    color: active ? "black" : "var(--color-text-secondary)",
+                  }}
+                >
+                  {t.label}
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Summary */}
           {pendingLends.length > 0 && (
             <div
-              className="flex items-center justify-between px-4 py-2.5 rounded-xl"
+              className="grid grid-cols-3 gap-2 px-4 py-3 rounded-xl"
               style={{
                 background: "var(--color-surface-2)",
                 border: "1px solid var(--color-border)",
               }}
             >
-              <span
-                className="text-xs font-medium"
-                style={{ color: "var(--color-text-muted)" }}
-              >
-                {pendingLends.length} pending
-              </span>
-              <span
-                className="text-sm font-bold"
-                style={{ color: "var(--color-expense)" }}
-              >
-                -{fmt(pendingTotal)}
-              </span>
+              <div>
+                <p
+                  className="text-[10px] font-semibold uppercase tracking-wide"
+                  style={{ color: "var(--color-text-muted)" }}
+                >
+                  You're owed
+                </p>
+                <p
+                  className="text-sm font-bold"
+                  style={{ color: "var(--color-income)" }}
+                >
+                  {fmt(owedToYou)}
+                </p>
+              </div>
+              <div>
+                <p
+                  className="text-[10px] font-semibold uppercase tracking-wide"
+                  style={{ color: "var(--color-text-muted)" }}
+                >
+                  You owe
+                </p>
+                <p
+                  className="text-sm font-bold"
+                  style={{ color: "var(--color-expense)" }}
+                >
+                  {fmt(youOwe)}
+                </p>
+              </div>
+              <div className="text-right">
+                <p
+                  className="text-[10px] font-semibold uppercase tracking-wide"
+                  style={{ color: "var(--color-text-muted)" }}
+                >
+                  Net
+                </p>
+                <p
+                  className="text-sm font-bold"
+                  style={{
+                    color:
+                      net >= 0 ? "var(--color-income)" : "var(--color-expense)",
+                  }}
+                >
+                  {net >= 0 ? "+" : "-"}
+                  {fmt(Math.abs(net))}
+                </p>
+              </div>
             </div>
           )}
 
@@ -248,7 +322,11 @@ export default function Transactions() {
                 className="text-sm font-medium"
                 style={{ color: "var(--color-text-muted)" }}
               >
-                No lends yet
+                {lendTab === "borrowed"
+                  ? "No borrowings yet"
+                  : lendTab === "lent"
+                    ? "No lends yet"
+                    : "Nothing recorded yet"}
               </p>
               <button
                 onClick={() => {
@@ -258,7 +336,7 @@ export default function Transactions() {
                 className="text-sm font-semibold transition-opacity hover:opacity-70"
                 style={{ color: "var(--color-accent)" }}
               >
-                Record your first lend →
+                Record your first entry →
               </button>
             </div>
           ) : (
@@ -366,7 +444,7 @@ export default function Transactions() {
         editing={editingLend}
       />
 
-      {/* Payment drawer — replaces old settle/undo AlertDialogs */}
+      {/* Payment drawer */}
       <LendPaymentDrawer
         open={payDrawerOpen}
         onClose={() => {
@@ -395,7 +473,7 @@ export default function Transactions() {
       {/* Delete lend confirm */}
       <DeleteDialog
         open={!!deletingLendId}
-        title="this lend and its wallet transactions"
+        title="this entry and its wallet transactions"
         onClose={() => setDeletingLendId(null)}
         onConfirm={() => {
           if (deletingLendId) deleteLend(deletingLendId);

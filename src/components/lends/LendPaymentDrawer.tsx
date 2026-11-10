@@ -38,6 +38,7 @@ export function LendPaymentDrawer({ open, onClose, lend, payments }: Props) {
 
   if (!lend) return null;
 
+  const isBorrowed = lend.direction === "borrowed";
   const paid = getLendPaidTotal(payments, lend.id);
   const remaining = Math.max(Math.round((lend.amount - paid) * 100) / 100, 0);
   const pct = Math.min((paid / lend.amount) * 100, 100);
@@ -93,7 +94,7 @@ export function LendPaymentDrawer({ open, onClose, lend, payments }: Props) {
                   color: "var(--color-text-primary)",
                 }}
               >
-                Log payment
+                {isBorrowed ? "Log repayment" : "Log payment received"}
               </Drawer.Title>
               <button
                 onClick={onClose}
@@ -114,6 +115,7 @@ export function LendPaymentDrawer({ open, onClose, lend, payments }: Props) {
                   className="text-xs font-medium truncate pr-2"
                   style={{ color: "var(--color-text-muted)" }}
                 >
+                  {isBorrowed ? "Owed to " : "Lent to "}
                   {lend.title}
                 </span>
                 <span
@@ -140,7 +142,7 @@ export function LendPaymentDrawer({ open, onClose, lend, payments }: Props) {
                   className="text-xs"
                   style={{ color: "var(--color-text-muted)" }}
                 >
-                  {fmt(paid)} received
+                  {fmt(paid)} {isBorrowed ? "repaid" : "received"}
                 </span>
                 <span
                   className="text-xs font-semibold"
@@ -157,7 +159,7 @@ export function LendPaymentDrawer({ open, onClose, lend, payments }: Props) {
                   className="text-xs font-medium block mb-1.5"
                   style={{ color: "var(--color-text-muted)" }}
                 >
-                  Amount received
+                  {isBorrowed ? "Amount repaid" : "Amount received"}
                 </label>
                 <input
                   type="number"
@@ -196,7 +198,7 @@ export function LendPaymentDrawer({ open, onClose, lend, payments }: Props) {
                   className="w-full py-3 rounded-xl text-sm font-bold mt-4"
                   style={{ background: "var(--color-accent)", color: "black" }}
                 >
-                  Log payment
+                  {isBorrowed ? "Log repayment" : "Log payment"}
                 </button>
               </div>
             )}
@@ -207,7 +209,7 @@ export function LendPaymentDrawer({ open, onClose, lend, payments }: Props) {
                   className="text-xs font-semibold uppercase tracking-widest mb-2"
                   style={{ color: "var(--color-text-muted)" }}
                 >
-                  Payment history
+                  {isBorrowed ? "Repayment history" : "Payment history"}
                 </p>
                 <div className="space-y-1.5">
                   {payments
@@ -269,7 +271,7 @@ export function LendPaymentDrawer({ open, onClose, lend, payments }: Props) {
                 color: "var(--color-text-primary)",
               }}
             >
-              Remove this payment?
+              {isBorrowed ? "Remove this repayment?" : "Remove this payment?"}
             </AlertDialogTitle>
             <AlertDialogDescription
               style={{ color: "var(--color-text-muted)" }}

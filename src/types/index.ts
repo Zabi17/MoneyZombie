@@ -1,6 +1,7 @@
 export type SavingsPotType = "goal" | "recurring" | "emergency";
 export type SavingsTransactionType = "deposit" | "withdrawal" | "transfer";
 export type TransactionType = "income" | "expense" | "transfer";
+export type LendDirection = "lent" | "borrowed";
 
 export type SavingsPot = {
   id: string;
@@ -72,6 +73,7 @@ export type Lend = {
   settledOn?: string | null;
   walletDebitTxId: string;
   createdAt: string;
+  direction: LendDirection;
 };
 
 export type Budget = {

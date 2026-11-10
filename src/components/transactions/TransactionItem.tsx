@@ -11,6 +11,16 @@ type Props = {
   onDelete: (tx: Transaction) => void;
 };
 
+const AMBER = "#f59e0b";
+
+// incoming = money into the wallet (green), outgoing = money out (amber)
+const LEND_KINDS = [
+  { prefix: "Lent ·", label: "LENT", incoming: false },
+  { prefix: "Returned ·", label: "RETURNED", incoming: true },
+  { prefix: "Borrowed ·", label: "BORROWED", incoming: true },
+  { prefix: "Repaid ·", label: "REPAID", incoming: false },
+] as const;
+
 export function TransactionItem({ tx, onEdit, onDelete }: Props) {
   const categories = useAppStore((s) => s.categories);
   const { format: fmt } = useCurrency();
@@ -19,11 +29,28 @@ export function TransactionItem({ tx, onEdit, onDelete }: Props) {
     ? ((Icons as any)[cat.icon] ?? Icons.CircleDot)
     : Icons.CircleDot;
 
-  const isLendDebit = tx.title.startsWith("Lent ·");
-  const isLendCredit = tx.title.startsWith("Returned ·");
-  const isLendRelated = isLendDebit || isLendCredit;
+  const lendKind = LEND_KINDS.find((k) => tx.title.startsWith(k.prefix));
+  const lendColor = lendKind
+    ? lendKind.incoming
+      ? "var(--color-income)"
+      : AMBER
+    : undefined;
 
-  const amberColor = "#f59e0b";
+  const displayTitle = lendKind
+    ? tx.title.slice(lendKind.prefix.length).trim()
+    : tx.title;
+
+  const sign = lendKind
+    ? lendKind.incoming
+      ? "+"
+      : "-"
+    : tx.type === "expense"
+      ? "-"
+      : "+";
+
+  const amountColor =
+    lendColor ??
+    (tx.type === "expense" ? "var(--color-expense)" : "var(--color-income)");
 
   return (
     <div
@@ -31,8 +58,8 @@ export function TransactionItem({ tx, onEdit, onDelete }: Props) {
       style={{
         background: "var(--color-surface)",
         border: "1px solid var(--color-border)",
-        borderLeft: isLendRelated
-          ? `3px solid ${isLendCredit ? "var(--color-income)" : amberColor}`
+        borderLeft: lendColor
+          ? `3px solid ${lendColor}`
           : "1px solid var(--color-border)",
       }}
     >
@@ -54,23 +81,17 @@ export function TransactionItem({ tx, onEdit, onDelete }: Props) {
             className="text-sm font-semibold truncate"
             style={{ color: "var(--color-text-primary)" }}
           >
-            {/* Strip the prefix for cleaner display */}
-            {isLendRelated
-              ? tx.title.split(" · ").slice(1).join(" · ")
-              : tx.title}
+            {displayTitle}
           </p>
-          {isLendDebit && (
+          {lendKind && lendColor && (
             <span
               className="text-[10px] font-bold px-1.5 py-0.5 rounded-md shrink-0"
-              style={{ background: `${amberColor}20`, color: amberColor }}
+              style={{
+                background: `color-mix(in srgb, ${lendColor} 15%, transparent)`,
+                color: lendColor,
+              }}
             >
-              LENT
-            </span>
-          )}
-          {isLendCredit && (
-            <span
-              className="text-[10px] font-bold px-1.5 py-0.5 rounded-md shrink-0 text-income bg-income/10">
-              RETURNED
+              {lendKind.label}
             </span>
           )}
         </div>
@@ -86,23 +107,9 @@ export function TransactionItem({ tx, onEdit, onDelete }: Props) {
       {/* Amount */}
       <span
         className="text-sm font-bold shrink-0"
-        style={{
-          color: isLendCredit
-            ? "var(--color-income)"
-            : isLendDebit
-              ? amberColor
-              : tx.type === "expense"
-                ? "var(--color-expense)"
-                : "var(--color-income)",
-        }}
+        style={{ color: amountColor }}
       >
-        {isLendDebit
-          ? "-"
-          : isLendCredit
-            ? "+"
-            : tx.type === "expense"
-              ? "-"
-              : "+"}
+        {sign}
         {fmt(tx.amount)}
       </span>
 
@@ -110,6 +117,7 @@ export function TransactionItem({ tx, onEdit, onDelete }: Props) {
       <div className="flex gap-1 shrink-0 lg:opacity-0 lg:group-hover:opacity-100 lg:transition-opacity lg:duration-150">
         <button
           onClick={() => onEdit(tx)}
+          aria-label="Edit"
           className="w-7 h-7 rounded-lg flex items-center justify-center transition-colors hover:opacity-70"
           style={{
             background: "var(--color-surface-2)",
@@ -120,6 +128,7 @@ export function TransactionItem({ tx, onEdit, onDelete }: Props) {
         </button>
         <button
           onClick={() => onDelete(tx)}
+          aria-label="Delete"
           className="w-7 h-7 rounded-lg flex items-center justify-center transition-colors hover:opacity-70"
           style={{
             background: "var(--color-expense)18",

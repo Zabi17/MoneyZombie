@@ -65,40 +65,48 @@ export function useRunningBalance(upToMonth: string) {
   return useMemo(() => {
     const prior = transactions.filter((t) => t.date.slice(0, 7) <= upToMonth);
 
-    const income = prior
-      .filter((t) => t.type === "income")
-      .reduce((s, t) => s + t.amount, 0);
+    const sumWhere = (pred: (t: (typeof prior)[number]) => boolean) =>
+      prior.filter(pred).reduce((s, t) => s + t.amount, 0);
 
-    const expense = prior
-      .filter((t) => t.type === "expense")
-      .reduce((s, t) => s + t.amount, 0);
+    const isTransfer = (t: (typeof prior)[number]) => t.type === "transfer";
 
-    const savingsDeposits = prior
-      .filter((t) => t.type === "transfer" && t.title.startsWith("Saved to"))
-      .reduce((s, t) => s + t.amount, 0);
+    const income = sumWhere((t) => t.type === "income");
+    const expense = sumWhere((t) => t.type === "expense");
 
-    const savingsWithdrawals = prior
-      .filter(
-        (t) => t.type === "transfer" && t.title.startsWith("Withdrawn from"),
-      )
-      .reduce((s, t) => s + t.amount, 0);
+    const savingsDeposits = sumWhere(
+      (t) => isTransfer(t) && t.title.startsWith("Saved to"),
+    );
+    const savingsWithdrawals = sumWhere(
+      (t) => isTransfer(t) && t.title.startsWith("Withdrawn from"),
+    );
 
-    const lendDebits = prior
-      .filter((t) => t.type === "transfer" && t.title.startsWith("Lent ·"))
-      .reduce((s, t) => s + t.amount, 0);
+    // Lent: money out, then back in
+    const lendDebits = sumWhere(
+      (t) => isTransfer(t) && t.title.startsWith("Lent ·"),
+    );
+    const lendReturns = sumWhere(
+      (t) => isTransfer(t) && t.title.startsWith("Returned ·"),
+    );
 
-    const lendReturns = prior
-      .filter((t) => t.type === "transfer" && t.title.startsWith("Returned ·"))
-      .reduce((s, t) => s + t.amount, 0);
+    // Borrowed: money in, then back out
+    const borrowCredits = sumWhere(
+      (t) => isTransfer(t) && t.title.startsWith("Borrowed ·"),
+    );
+    const borrowRepayments = sumWhere(
+      (t) => isTransfer(t) && t.title.startsWith("Repaid ·"),
+    );
 
-    return (
+    const balance =
       income -
       expense -
       savingsDeposits +
       savingsWithdrawals -
       lendDebits +
-      lendReturns
-    );
+      lendReturns +
+      borrowCredits -
+      borrowRepayments;
+
+    return Math.round(balance * 100) / 100;
   }, [transactions, upToMonth]);
 }
 
